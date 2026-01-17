@@ -1,0 +1,10 @@
+{
+	"pages": [
+        "configuration-files",
+        "configure-rules",
+        "configure-plugins",
+        "combining-configurations",
+        "differences-from-eslint"
+	],
+    "defaultOpen": true
+}

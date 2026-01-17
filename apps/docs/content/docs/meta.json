@@ -1,0 +1,17 @@
+{
+	"pages": [
+		"index",
+        "what-is-viewlint",
+        "getting-started",
+		"---Using ViewLint---",
+        "configure-viewlint",
+        "cli-reference",
+        "mcp-server",
+        "rules-reference",
+        "---Extending ViewLint---",
+        "ways-to-extend-viewlint",
+        "create-plugins",
+        "---API Reference---",
+        "typescript-api-reference"
+	]
+}
