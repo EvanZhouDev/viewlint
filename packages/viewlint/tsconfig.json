@@ -17,6 +17,6 @@
 		"target": "ES2022",
 		"types": ["node"]
 	},
-	"include": ["src", "config", "plugin", "rules", "demo"],
+	"include": ["src", "bin", "config", "plugin", "rules", "demo"],
 	"exclude": ["node_modules", "dist"]
 }
