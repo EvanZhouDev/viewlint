@@ -199,6 +199,7 @@ export type LintRelation = {
 }
 
 export type LintMessage = {
+	ruleId: string
 	location: LintLocation
 	relations: Array<LintRelation>
 	severity: ReportSeverity
