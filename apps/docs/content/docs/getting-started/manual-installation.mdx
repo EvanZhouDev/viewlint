@@ -2,3 +2,41 @@
 title: Manual Installation
 description: Make a Custom ViewLint Setup
 ---
+
+You can also manually set up ViewLint in your project.
+
+1. Install the ViewLint package in your project:
+
+```bash tab="NPM"
+npm install viewlint@latest
+```
+
+```bash tab="PNPM"
+pnpm add viewlint@latest
+```
+
+```bash tab="Bun"
+bun add viewlint@latest
+```
+
+```bash tab="Yarn"
+yarn add viewlint@latest
+```
+
+2. Add a `viewlint.config.js` file:
+
+> TypeScript is also supported! Just create the file as `viewlint.config.ts`
+
+```sh
+touch viewlint.config.js
+```
+
+3. Add configuration to the `viewlint.config.js` file. Refer to Configure Viewlint for more ifnormation on adding rules, custom configurations, plugins, and more.
+
+```js
+import { defineConfig } from "viewlint/config"
+
+export default defineConfig([
+    
+])
+```

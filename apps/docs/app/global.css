@@ -1,3 +1,24 @@
-@import 'tailwindcss';
-@import 'fumadocs-ui/css/neutral.css';
-@import 'fumadocs-ui/css/preset.css';
+@import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+
+@layer base {
+	:root {
+		--color-fd-background: #ffffff;
+		--color-fd-card: #fafafa;
+	}
+
+	/* Keep docs content white, use a slightly tinted header surface. */
+	#nd-docs-layout header[data-transparent="false"] {
+		background-color: var(--color-fd-card);
+	}
+
+	#nd-docs-layout [data-toc-popover] > header {
+		background-color: var(--color-fd-card);
+	}
+
+	/* Docs tab strip (top tab mode) uses bg-fd-background by default. */
+	#nd-docs-layout > .z-10.bg-fd-background.border-b {
+		background-color: var(--color-fd-card);
+	}
+}

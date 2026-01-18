@@ -1,6 +1,3 @@
 {
-    "pages": [
-        "custom-rules-quickstart",
-        "custom-rules-reference"
-    ]
+	"pages": ["custom-rules-quickstart", "custom-rules-reference"]
 }

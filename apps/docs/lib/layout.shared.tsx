@@ -13,7 +13,7 @@ export function baseOptions(): BaseLayoutProps {
 						style={{ marginRight: "-3px" }}
 					>
 						<title>ViewLint Logo</title>
-						<g clip-path="url(#clip0_205_24)">
+						<g clipPath="url(#clip0_205_24)">
 							<rect
 								x="84.0625"
 								y="147.299"
@@ -56,7 +56,7 @@ export function baseOptions(): BaseLayoutProps {
 							</clipPath>
 						</defs>
 					</svg>
-					<h1 style={{fontSize: "20px"}}>ViewLint</h1>
+					<h1 style={{ fontSize: "20px" }}>ViewLint</h1>
 				</>
 			),
 		},
