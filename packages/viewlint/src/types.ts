@@ -95,9 +95,11 @@ export type RuleContext<RuleOptions> = {
 	page: Page
 	options: RuleOptions
 	report(violation: ViolationReport): void
+
 	evaluate<R>(
 		fn: (payload: { report: BrowserViolationReporter }) => R | Promise<R>,
 	): Promise<R>
+
 	// Mirrors Playwright's `page.evaluate<R, Arg>`: `arg` can be serializable data and/or JSHandles.
 	// Inside the page context it is unboxed (ElementHandle/JSHandle -> underlying value), like Playwright.
 	evaluate<R, Arg>(
@@ -107,6 +109,12 @@ export type RuleContext<RuleOptions> = {
 		}) => R | Promise<R>,
 		arg: Arg,
 	): Promise<R>
+
+	// Playwright also accepts a string expression in place of a function.
+	// Note: When using a string, the `report` helper is not available; call `page.evaluate` if needed.
+	evaluate<R>(expression: string): Promise<R>
+	evaluate<R, Arg>(expression: string, arg: Arg): Promise<R>
+
 	// Prefer `context.evaluate` for reporting from within page context.
 	// Use `page.evaluate` directly when you don't need access to `report`.
 }

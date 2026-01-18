@@ -445,7 +445,6 @@ export class ViewLintEngine {
 							arg: unknown
 						}
 
-
 						async function evaluateNoArg<T>(
 							fn: (payload: EvaluateNoArgPayload) => T | Promise<T>,
 						): Promise<T> {
@@ -474,8 +473,20 @@ export class ViewLintEngine {
 							}
 						}
 
+						function evaluate<T>(
+							fn: (payload: EvaluateNoArgPayload) => T | Promise<T>,
+						): Promise<T>
 						function evaluate<T, Arg>(
-							...evaluateArg:
+							fn: (payload: {
+								report: BrowserReportFn
+								arg: Unboxed<Arg>
+							}) => T | Promise<T>,
+							arg: Arg,
+						): Promise<T>
+						function evaluate<T>(expression: string): Promise<T>
+						function evaluate<T, Arg>(expression: string, arg: Arg): Promise<T>
+						function evaluate<T, Arg>(
+							...args:
 								| [fn: (payload: EvaluateNoArgPayload) => T | Promise<T>]
 								| [
 										fn: (payload: {
@@ -484,18 +495,34 @@ export class ViewLintEngine {
 										}) => T | Promise<T>,
 										arg: Arg,
 								  ]
+								| [expression: string]
+								| [expression: string, arg: Arg]
 						): Promise<T> {
-							if (evaluateArg.length === 1) {
-								const [fn] = evaluateArg
+							if (typeof args[0] === "string") {
+								const expression = args[0]
+								const arg = args[1]
+								if (!arg) {
+									return page.evaluate<T>(expression)
+								}
+
+								// Delegate to Playwright for exact string expression semantics.
+								// `report` injection only happens for function evaluations.
+								return args.length === 1
+									? page.evaluate<T>(expression)
+									: page.evaluate<T, Arg>(expression, arg)
+							}
+
+							if (args.length === 1) {
+								const fn = args[0]
 								return evaluateNoArg(fn)
 							}
 
-							const [fn, arg] = evaluateArg
-							return evaluateWithArg(
-								// biome-ignore lint: Playwright unboxes evaluation args (ElementHandle/JSHandle -> underlying value). TS can't prove Unboxed<Arg> equals Arg for generics; we mirror `page.evaluate<R, Arg>`.
-								fn as (payload: EvaluateWithArgPayload) => T | Promise<T>,
-								arg,
-							)
+							// biome-ignore lint: Playwright unboxes evaluation args (ElementHandle/JSHandle -> underlying value). TS can't prove Unboxed<Arg> equals Arg for generics; we mirror `page.evaluate<R, Arg>`.
+							const fn = args[0] as (
+								payload: EvaluateWithArgPayload,
+							) => T | Promise<T>
+							const arg = args[1]
+							return evaluateWithArg(fn, arg)
 						}
 
 						const initialScroll: ScrollPosition = await page.evaluate(() => {
