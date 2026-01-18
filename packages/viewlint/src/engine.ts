@@ -31,7 +31,6 @@ declare global {
 		__viewlint_report?: (payload: unknown) => Promise<void>
 		__viewlint_report_payload?: (violation: {
 			message: string
-			severity: "info" | "warn" | "error"
 			element: Element
 			relations?: Array<{ description: string; element: Element }>
 		}) => void
@@ -92,7 +91,6 @@ function toLintMessage(violation: {
 		severity: violation.severity,
 	}
 }
-
 function computeCounts(
 	messages: LintMessage[],
 ): Pick<
@@ -269,7 +267,6 @@ export class ViewLintEngine {
 
 						type PageViolationReportWire = {
 							message: string
-							severity: ViolationReport["severity"]
 							location: LintLocation
 							relations?: Array<{
 								description: string
@@ -292,7 +289,6 @@ export class ViewLintEngine {
 
 									activeBufferedViolations.push({
 										message: wire.message,
-										severity: wire.severity,
 										location: wire.location,
 										relations: wire.relations,
 									})
@@ -337,7 +333,6 @@ export class ViewLintEngine {
 										}
 										w.__viewlint_report({
 											message: violation.message,
-											severity: violation.severity,
 											location,
 											relations,
 										})
@@ -415,7 +410,6 @@ export class ViewLintEngine {
 									}
 									window.__viewlint_report({
 										message: violation.message,
-										severity: violation.severity,
 										location,
 										relations,
 									})
@@ -546,7 +540,6 @@ export class ViewLintEngine {
 
 						type ResolvedViolation = {
 							message: string
-							severity: ViolationReport["severity"]
 							location: LintLocation
 							relations?: Array<{
 								description: string
@@ -581,7 +574,6 @@ export class ViewLintEngine {
 
 							resolvedViolations.push({
 								message: violation.message,
-								severity: violation.severity,
 								location,
 								relations,
 							})
@@ -606,10 +598,7 @@ export class ViewLintEngine {
 									? suppressedMessages
 									: messages
 
-							const effectiveSeverity =
-								ruleConfig.severity === "inherit"
-									? resolvedViolation.severity
-									: ruleConfig.severity
+							const effectiveSeverity = ruleConfig.severity
 
 							if (effectiveSeverity === "off") {
 								throw new Error(

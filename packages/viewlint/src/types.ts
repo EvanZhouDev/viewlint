@@ -50,7 +50,6 @@ export type LintLocation = {
 
 export type PageViolationReport = {
 	message: string
-	severity: ReportSeverity
 	element: HTMLElement
 	relations?: Array<{
 		description: string
@@ -64,7 +63,6 @@ export type ViolationReport =
 	| {
 			message: string
 			element: Locator
-			severity: ReportSeverity
 			relations?:
 				| {
 						description: string
@@ -78,7 +76,6 @@ export type ViolationReport =
 	| {
 			message: string
 			location: LintLocation
-			severity: ReportSeverity
 			relations?:
 				| {
 						description: string
@@ -140,6 +137,7 @@ type InferRuleOptions<Schema> =
 export type RuleMeta<
 	Schema extends RuleSchema | undefined = RuleSchema | undefined,
 > = {
+	severity?: ReportSeverity
 	schema?: Schema
 	defaultOptions?: InferRuleOptions<Schema>
 	docs?: RuleDocs

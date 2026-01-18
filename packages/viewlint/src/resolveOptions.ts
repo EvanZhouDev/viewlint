@@ -48,7 +48,7 @@ function resolveBrowserOptions(
 }
 
 export type NormalizedRuleConfig = {
-	severity: Severity
+	severity: Exclude<Severity, "inherit">
 	options: unknown[]
 }
 
@@ -242,8 +242,10 @@ export function resolveOptions(options: Options): ResolvedOptions {
 
 		const previous = rules.get(canonicalRuleId)
 
+		const ruleDefaultSeverity = rule.meta?.severity ?? "error"
+
 		if (severity === "inherit") {
-			const inheritedSeverity = previous?.severity ?? "inherit"
+			const inheritedSeverity = ruleDefaultSeverity
 			const inheritedOptions =
 				rawOptions.length > 0
 					? parseRuleOptions(canonicalRuleId, rule, rawOptions)
