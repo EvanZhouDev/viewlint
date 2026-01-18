@@ -1,22 +1,21 @@
 import fs from "node:fs/promises"
 import path from "node:path"
 
-import { Command, Option } from "commander"
+import { Command, InvalidArgumentError } from "commander"
 
 import { ViewLint } from "./index.js"
 import type { LintMessage, LintResult, LoadedFormatter } from "./types.js"
 
-type ParsedCliOptions = {
+type CliOptions = {
 	config?: string
-
 	format: string
 	outputFile?: string
-
 	quiet: boolean
 	maxWarnings: number
 
-	help: boolean
-	version: boolean
+	// Parsed for help text completeness, but handled by the bin entrypoint.
+	init?: boolean
+	mcp?: boolean
 }
 
 type SeverityCounts = {
@@ -33,7 +32,7 @@ function parseIntStrict(raw: string): number {
 	const parsed = Number(raw)
 
 	if (!Number.isFinite(parsed) || !Number.isInteger(parsed)) {
-		throw new Error(`Expected an integer but got '${raw}'.`)
+		throw new InvalidArgumentError(`Expected an integer but got '${raw}'.`)
 	}
 
 	return parsed
@@ -113,124 +112,6 @@ async function writeOrStdout(
 	await fs.writeFile(filePath, output, "utf8")
 }
 
-type HelpItem = {
-	section: string
-	flags: string
-	description: string
-}
-
-const HELP_ITEMS: HelpItem[] = [
-	{
-		section: "Basic configuration",
-		flags: "-c, --config path::String",
-		description:
-			"Use this configuration instead of viewlint.config.ts, viewlint.config.mjs, or viewlint.config.js",
-	},
-	{
-		section: "Handle Warnings",
-		flags: "--quiet",
-		description: "Report errors only - default: false",
-	},
-	{
-		section: "Handle Warnings",
-		flags: "--max-warnings Int",
-		description:
-			"Number of warnings to trigger nonzero exit code - default: -1",
-	},
-	{
-		section: "Output",
-		flags: "-o, --output-file path::String",
-		description: "Specify file to write report to",
-	},
-	{
-		section: "Output",
-		flags: "-f, --format String",
-		description: "Use a specific output format - default: stylish",
-	},
-	{
-		section: "Miscellaneous",
-		flags: "--init",
-		description:
-			"Run config initialization wizard - default: false (coming soon)",
-	},
-	{
-		section: "Miscellaneous",
-		flags: "--mcp",
-		description: "Start the ViewLint MCP server (coming soon)",
-	},
-	{
-		section: "Miscellaneous",
-		flags: "-h, --help",
-		description: "Show help",
-	},
-	{
-		section: "Miscellaneous",
-		flags: "-v, --version",
-		description: "Output the version number",
-	},
-]
-
-function renderHelp(): string {
-	const colWidth = HELP_ITEMS.reduce((max, item) => {
-		return Math.max(max, item.flags.length)
-	}, 0)
-
-	const sections = new Map<string, HelpItem[]>()
-	for (const item of HELP_ITEMS) {
-		const existing = sections.get(item.section)
-		if (existing) {
-			existing.push(item)
-		} else {
-			sections.set(item.section, [item])
-		}
-	}
-
-	const lines: string[] = []
-	lines.push("viewlint [options] <url> [url]", "")
-
-	for (const [section, items] of sections.entries()) {
-		lines.push(`${section}:`)
-		for (const item of items) {
-			lines.push(`  ${item.flags.padEnd(colWidth)}  ${item.description}`)
-		}
-		lines.push("")
-	}
-
-	return `${lines.join("\n")}\n`
-}
-
-function createProgram(): Command {
-	const program = new Command()
-
-	program
-		.name("viewlint")
-		.usage("[options] <url> [url]")
-		.allowUnknownOption(false)
-		.allowExcessArguments(true)
-
-	// Disable Commander built-in help/version output.
-	program.helpOption(false)
-
-	// Avoid duplicated output: we print errors/help/version ourselves.
-	program.configureOutput({
-		writeOut() {},
-		writeErr() {},
-	})
-
-	program
-		.addOption(new Option("-c, --config <path>"))
-		.addOption(new Option("--quiet").default(false))
-		.addOption(
-			new Option("--max-warnings <n>").argParser(parseIntStrict).default(-1),
-		)
-		.addOption(new Option("-o, --output-file <path>"))
-		.addOption(new Option("-f, --format <format>").default("stylish"))
-		.addOption(new Option("-h, --help").default(false))
-		.addOption(new Option("-v, --version").default(false))
-
-	return program
-}
-
 async function readPackageVersion(): Promise<string> {
 	const url = new URL("../package.json", import.meta.url)
 	const raw = await fs.readFile(url, "utf8")
@@ -262,10 +143,7 @@ function filterResultsForQuietMode(results: LintResult[]): LintResult[] {
 	})
 }
 
-async function execute(
-	options: ParsedCliOptions,
-	urls: string[],
-): Promise<number> {
+async function execute(options: CliOptions, urls: string[]): Promise<number> {
 	if (urls.length === 0) {
 		process.stderr.write(
 			"No URLs provided.\n\nPass one or more URLs, e.g. `viewlint https://example.com`.\n",
@@ -312,49 +190,69 @@ async function execute(
 	return computeExitCode(counts, options.maxWarnings)
 }
 
-function isCommanderError(
-	value: unknown,
-): value is { exitCode: number; message: string } {
-	if (!isRecord(value)) return false
-	return typeof value.exitCode === "number" && typeof value.message === "string"
+function isCommanderError(value: unknown): value is { exitCode: number } {
+	return isRecord(value) && typeof value.exitCode === "number"
 }
 
 export async function runCli(argv: string[]): Promise<number> {
-	const program = createProgram()
+	const version = await readPackageVersion()
+	let exitCode: number = 0
+
+	const program = new Command()
+	program
+		.name("viewlint")
+		.description("Lint accessibility and UI issues on web pages")
+		.usage("[options] <url> [url]")
+		.argument("[url...]", "One or more URLs to lint")
+		.showHelpAfterError()
+		.allowUnknownOption(false)
+
+	// Help group headings are part of the Commander-native help output.
+	program
+		.optionsGroup("Basic configuration:")
+		.option(
+			"-c, --config <path>",
+			"Use this configuration instead of viewlint.config.ts, viewlint.config.mjs, or viewlint.config.js",
+		)
+
+	program
+		.optionsGroup("Handle Warnings:")
+		.option("--quiet", "Report errors only", false)
+		.option(
+			"--max-warnings <n>",
+			"Number of warnings to trigger nonzero exit code",
+			parseIntStrict,
+			-1,
+		)
+
+	program
+		.optionsGroup("Output:")
+		.option("-f, --format <format>", "Use a specific output format", "stylish")
+		.option("-o, --output-file <path>", "Specify file to write report to")
+
+	program
+		.optionsGroup("Miscellaneous:")
+		.option("--init", "Run config initialization wizard (coming soon)", false)
+		.option("--mcp", "Start the ViewLint MCP server (coming soon)", false)
+		.version(version, "-v, --version", "Output the version number")
+		.helpOption("-h, --help", "Show help")
+
+	program.action(async (urls: string[], options: CliOptions) => {
+		exitCode = await execute(options, urls)
+	})
 
 	program.exitOverride()
 
 	try {
-		program.parse(argv)
+		await program.parseAsync(argv)
+		return exitCode
 	} catch (error) {
 		if (isCommanderError(error)) {
-			process.stderr.write(`${error.message}\n`)
-			return 2
+			return error.exitCode === 0 ? 0 : 2
 		}
 
 		const message = error instanceof Error ? error.message : String(error)
 		process.stderr.write(`${message}\n`)
 		return 2
 	}
-
-	const opts = program.opts<ParsedCliOptions>()
-	const urls = program.args
-
-	if (opts.help) {
-		process.stdout.write(renderHelp())
-		return 0
-	}
-
-	if (opts.version) {
-		try {
-			process.stdout.write(`${await readPackageVersion()}\n`)
-			return 0
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error)
-			process.stderr.write(`${message}\n`)
-			return 2
-		}
-	}
-
-	return await execute(opts, urls)
 }
