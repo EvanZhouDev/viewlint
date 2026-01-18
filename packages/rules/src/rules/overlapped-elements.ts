@@ -19,7 +19,6 @@ export default defineRule({
 		await context.evaluate(({ report }) => {
 			const OVERLAP_THRESHOLD = 5
 			const MIN_ELEMENT_SIZE = 50
-			const VIEWPORT_COVER_RATIO = 0.9
 
 			const isHTMLElement = (el: Element | null): el is HTMLElement => {
 				return el instanceof HTMLElement
@@ -42,23 +41,20 @@ export default defineRule({
 				}
 				if (parseFloat(style.opacity) === 0) return false
 
-				const display = style.display
-				if (
-					display !== "block" &&
-					display !== "flex" &&
-					display !== "grid" &&
-					display !== "table" &&
-					display !== "flow-root"
-				) {
+				// This rule targets layout collisions in normal flow.
+				// Absolute/fixed positioning is commonly used for intentional layering.
+				if (style.position === "absolute" || style.position === "fixed") {
 					return false
 				}
 
-				if (style.position === "absolute" || style.position === "fixed") {
-					const zIndex = parseInt(style.zIndex, 10)
-					if (!Number.isNaN(zIndex) && zIndex > 10) return false
-				}
-
-				return true
+				const display = style.display
+				return (
+					display === "block" ||
+					display === "flex" ||
+					display === "grid" ||
+					display === "table" ||
+					display === "flow-root"
+				)
 			}
 
 			const rectsOverlap = (a: DOMRect, b: DOMRect): boolean => {
@@ -77,20 +73,6 @@ export default defineRule({
 				const overlapWidth = Math.max(0, overlapRight - overlapLeft)
 				const overlapHeight = Math.max(0, overlapBottom - overlapTop)
 				return overlapWidth * overlapHeight
-			}
-
-			const isFullViewportLayer = (el: HTMLElement, rect: DOMRect): boolean => {
-				const style = window.getComputedStyle(el)
-				if (style.position !== "fixed" && style.position !== "absolute") {
-					return false
-				}
-
-				const coversWidth =
-					rect.width / window.innerWidth >= VIEWPORT_COVER_RATIO
-				const coversHeight =
-					rect.height / window.innerHeight >= VIEWPORT_COVER_RATIO
-
-				return coversWidth && coversHeight
 			}
 
 			type Candidate = { el: HTMLElement; rect: DOMRect; area: number }
@@ -135,8 +117,6 @@ export default defineRule({
 					if (!b) continue
 
 					if (a.el.contains(b.el) || b.el.contains(a.el)) continue
-					if (isFullViewportLayer(a.el, a.rect)) continue
-					if (isFullViewportLayer(b.el, b.rect)) continue
 					if (!rectsOverlap(a.rect, b.rect)) continue
 					if (parentOverlaps(a.el, b.el, b.rect)) continue
 					if (parentOverlaps(b.el, a.el, a.rect)) continue

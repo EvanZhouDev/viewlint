@@ -30,8 +30,32 @@ export default defineRule({
 				if (style.display === "none") return false
 				if (style.visibility === "hidden" || style.visibility === "collapse")
 					return false
+				if (parseFloat(style.opacity) === 0) return false
 
 				return true
+			}
+
+			const isOffscreenPositioned = (el: HTMLElement): boolean => {
+				const style = window.getComputedStyle(el)
+				if (style.position !== "absolute" && style.position !== "fixed")
+					return false
+
+				const top = parseFloat(style.top)
+				const left = parseFloat(style.left)
+
+				if (!Number.isNaN(top) && top <= -500) return true
+				if (!Number.isNaN(left) && left <= -500) return true
+
+				return false
+			}
+
+			const hasVisibleOverflow = (el: HTMLElement): boolean => {
+				const style = window.getComputedStyle(el)
+				return (
+					style.overflow === "visible" &&
+					style.overflowX === "visible" &&
+					style.overflowY === "visible"
+				)
 			}
 
 			const hasSize = (el: HTMLElement): boolean => {
@@ -93,10 +117,16 @@ export default defineRule({
 				if (!isVisible(el)) continue
 				if (!hasSize(el)) continue
 
+				// Common intentional pattern: offscreen positioned elements (e.g. skip links)
+				if (isOffscreenPositioned(el)) continue
+
 				const parent = el.parentElement
 				if (!isHTMLElement(parent)) continue
 				if (!isVisible(parent)) continue
 				if (!hasSize(parent)) continue
+
+				// If the container explicitly allows visual overflow, don't report.
+				if (hasVisibleOverflow(parent)) continue
 
 				const parentRect = parent.getBoundingClientRect()
 				const childRect = el.getBoundingClientRect()
