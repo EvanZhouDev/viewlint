@@ -1,185 +1,191 @@
-import type { ConfigObject, Plugin } from "../src/types.js";
+import type { ConfigObject, Plugin } from "../src/types.js"
 
 import type {
 	ConfigWithExtends,
 	ConfigWithExtendsArray,
 	ExtendsElement,
 	InfiniteArray,
-} from "./types.js";
+} from "./types.js"
 
 type DefineState = {
-	plugins: Map<string, Plugin>;
-	output: ConfigObject[];
-};
+	plugins: Map<string, Plugin>
+	output: ConfigObject[]
+}
 
 type DefineContext = {
-	activeArrays: WeakSet<object>;
-	activeItems: WeakSet<object>;
-	stringStack: string[];
-};
+	activeArrays: WeakSet<object>
+	activeItems: WeakSet<object>
+	stringStack: string[]
+}
 
 function resolveExtendsString(
 	reference: string,
-	plugins: Map<string, Plugin>
+	plugins: Map<string, Plugin>,
 ): ConfigObject {
-	const normalized = reference.trim();
-	const lastSlashIndex = normalized.lastIndexOf("/");
-	let pluginNamespace: string = "";
-	let configName: string = "";
+	const normalized = reference.trim()
+	const lastSlashIndex = normalized.lastIndexOf("/")
+	let pluginNamespace: string = ""
+	let configName: string = ""
 
 	if (lastSlashIndex === -1) {
 		const candidates = [...plugins.keys()].filter((knownNamespace) => {
-			return knownNamespace.endsWith(`/${reference}`);
-		});
+			return knownNamespace.endsWith(`/${reference}`)
+		})
 
 		if (candidates.length === 0) {
 			throw new Error(
-				`Invalid extends reference '${reference}'. Expected '<configName>' or '<pluginNamespace>/<configName>'.`
-			);
+				`Invalid extends reference '${reference}'. Expected '<configName>' or '<pluginNamespace>/<configName>'.`,
+			)
 		} else if (candidates.length === 1) {
-			pluginNamespace = candidates[0];
-			configName = reference;
+			const candidate = candidates[0]
+			if (!candidate) {
+				throw new Error(
+					`Invalid extends reference '${reference}'. Expected '<configName>' or '<pluginNamespace>/<configName>'.`,
+				)
+			}
+			pluginNamespace = candidate
+			configName = reference
 		} else if (candidates.length > 1) {
-			candidates.sort();
+			candidates.sort()
 			throw new Error(
 				`Ambiguous plugin '${reference}' in extends '${reference}'. Specify with a namespace. Matches: ${candidates
 					.map((candidate) => `'${candidate}'`)
-					.join(", ")}.`
-			);
+					.join(", ")}.`,
+			)
 		}
 	} else {
-		const pluginRef = normalized.slice(0, lastSlashIndex).trim();
-		configName = normalized.slice(lastSlashIndex + 1).trim();
+		const pluginRef = normalized.slice(0, lastSlashIndex).trim()
+		configName = normalized.slice(lastSlashIndex + 1).trim()
 		if (pluginRef.length === 0 || configName.length === 0) {
 			throw new Error(
-				`Invalid extends reference '${reference}'. Expected '<pluginNamespace>/<configName>'.`
-			);
+				`Invalid extends reference '${reference}'. Expected '<pluginNamespace>/<configName>'.`,
+			)
 		}
 
 		if (plugins.has(pluginRef)) {
-			pluginNamespace = pluginRef;
+			pluginNamespace = pluginRef
 		} else {
-			const knownPlugins = [...plugins.keys()].sort();
+			const knownPlugins = [...plugins.keys()].sort()
 			const knownPluginsMessage =
 				knownPlugins.length === 0
 					? "No plugins are registered."
 					: `Known plugins: ${knownPlugins
 							.map((name) => `'${name}'`)
-							.join(", ")}.`;
+							.join(", ")}.`
 
 			throw new Error(
-				`Unknown plugin referenced by extends '${reference}'. Ensure it is registered in plugins. ${knownPluginsMessage}`
-			);
+				`Unknown plugin referenced by extends '${reference}'. Ensure it is registered in plugins. ${knownPluginsMessage}`,
+			)
 		}
 	}
 
-	const plugin = plugins.get(pluginNamespace);
+	const plugin = plugins.get(pluginNamespace)
 	if (!plugin) {
 		throw new Error(
-			`Unknown plugin '${pluginNamespace}' referenced by extends '${reference}'. Ensure it is registered in plugins.`
-		);
+			`Unknown plugin '${pluginNamespace}' referenced by extends '${reference}'. Ensure it is registered in plugins.`,
+		)
 	}
 
 	if (!plugin.configs)
-		throw new Error(`No configuration found in plugin '${pluginNamespace}'.`);
+		throw new Error(`No configuration found in plugin '${pluginNamespace}'.`)
 
-	const config = plugin.configs[configName];
+	const config = plugin.configs[configName]
 	if (!config) {
-		const availableConfigs = Object.keys(plugin.configs).sort();
+		const availableConfigs = Object.keys(plugin.configs).sort()
 		const availableConfigsMessage =
 			availableConfigs.length === 0
 				? "No configs are available in this plugin."
 				: `Available configs: ${availableConfigs
 						.map((name) => `'${name}'`)
-						.join(", ")}.`;
+						.join(", ")}.`
 
 		throw new Error(
-			`Unknown config '${configName}' in plugin '${pluginNamespace}' (extends '${reference}'). ${availableConfigsMessage}`
-		);
+			`Unknown config '${configName}' in plugin '${pluginNamespace}' (extends '${reference}'). ${availableConfigsMessage}`,
+		)
 	}
 
-	return config;
+	return config
 }
 
 function applyExtendsEntry(
 	entry: ExtendsElement,
 	state: DefineState,
-	context: DefineContext
+	context: DefineContext,
 ): void {
 	if (typeof entry === "string") {
-		const normalized = entry.trim();
-		const cycleIndex = context.stringStack.indexOf(normalized);
+		const normalized = entry.trim()
+		const cycleIndex = context.stringStack.indexOf(normalized)
 		if (cycleIndex !== -1) {
 			const chain = [...context.stringStack.slice(cycleIndex), normalized].join(
-				" -> "
-			);
-			throw new Error(`Circular extends detected: ${chain}`);
+				" -> ",
+			)
+			throw new Error(`Circular extends detected: ${chain}`)
 		}
 
-		context.stringStack.push(normalized);
+		context.stringStack.push(normalized)
 		try {
-			const resolved = resolveExtendsString(normalized, state.plugins);
-			applyConfig(resolved, state, context);
+			const resolved = resolveExtendsString(normalized, state.plugins)
+			applyConfig(resolved, state, context)
 		} finally {
-			context.stringStack.pop();
+			context.stringStack.pop()
 		}
 
-		return;
+		return
 	}
 
-	applyConfig(entry, state, context);
+	applyConfig(entry, state, context)
 }
 
 function applyConfig(
 	config: InfiniteArray<ConfigWithExtends>,
 	state: DefineState,
-	context: DefineContext
+	context: DefineContext,
 ): void {
 	if (Array.isArray(config)) {
 		if (context.activeArrays.has(config)) {
 			throw new Error(
-				"Circular extends detected: a config array was recursively extended."
-			);
+				"Circular extends detected: a config array was recursively extended.",
+			)
 		}
-		context.activeArrays.add(config);
+		context.activeArrays.add(config)
 
 		try {
 			for (const item of config) {
-				applyConfig(item, state, context);
+				applyConfig(item, state, context)
 			}
 		} finally {
-			context.activeArrays.delete(config);
+			context.activeArrays.delete(config)
 		}
 
-		return;
+		return
 	}
 
 	if (context.activeItems.has(config)) {
 		throw new Error(
-			"Circular extends detected: a config item was recursively extended."
-		);
+			"Circular extends detected: a config item was recursively extended.",
+		)
 	}
-	context.activeItems.add(config);
+	context.activeItems.add(config)
 
 	try {
 		if (config.plugins) {
 			for (const [pluginNamespace, plugin] of Object.entries(config.plugins)) {
-				state.plugins.set(pluginNamespace, plugin);
+				state.plugins.set(pluginNamespace, plugin)
 			}
 		}
 
 		if (config.extends) {
 			for (const extendsEntry of config.extends) {
-				applyExtendsEntry(extendsEntry, state, context);
+				applyExtendsEntry(extendsEntry, state, context)
 			}
 		}
 
-		const { extends: _extends, ...rest } = config;
+		const { extends: _extends, ...rest } = config
 		if (rest.plugins || rest.rules) {
-			state.output.push(rest);
+			state.output.push(rest)
 		}
 	} finally {
-		context.activeItems.delete(config);
+		context.activeItems.delete(config)
 	}
 }
 
@@ -189,17 +195,17 @@ export function defineConfig(
 	const state: DefineState = {
 		plugins: new Map(),
 		output: [],
-	};
+	}
 
 	const context: DefineContext = {
 		activeArrays: new WeakSet(),
 		activeItems: new WeakSet(),
 		stringStack: [],
-	};
-
-	for (const config of configs) {
-		applyConfig(config, state, context);
 	}
 
-	return state.output;
+	for (const config of configs) {
+		applyConfig(config, state, context)
+	}
+
+	return state.output
 }

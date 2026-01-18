@@ -1,7 +1,7 @@
 import { pathToFileURL } from "node:url"
 
-import type { Config, ConfigObject } from "./types.js"
 import { safeCast } from "./helpers.js"
+import type { Config, ConfigObject } from "./types.js"
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null

@@ -1,19 +1,18 @@
 import path from "node:path"
 
-import { resolveOptions } from "./resolveOptions.js"
-import type { ResolvedOptions } from "./resolveOptions.js"
-import {
-	Config,
-	RulesConfig,
-	type LintResult,
-	type LoadedFormatter,
-	type Options,
-} from "./types.js"
-
 import { findNearestViewlintConfigFile } from "./configFile.js"
-import { loadViewlintConfigFromFile } from "./loadConfigFile.js"
 import { ViewLintEngine } from "./engine.js"
 import { formatterFromId } from "./formatter.js"
+import { loadViewlintConfigFromFile } from "./loadConfigFile.js"
+import type { ResolvedOptions } from "./resolveOptions.js"
+import { resolveOptions } from "./resolveOptions.js"
+import type {
+	Config,
+	LintResult,
+	LoadedFormatter,
+	Options,
+	RulesConfig,
+} from "./types.js"
 
 export class ViewLint {
 	#options: Options

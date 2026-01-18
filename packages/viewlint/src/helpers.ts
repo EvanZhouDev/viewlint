@@ -30,11 +30,10 @@ export function resolveRuleId(
 	if (candidates.length === 1) {
 		if (candidates[0]) {
 			return candidates[0]
-		} else {
-			throw new Error(`Unexpected error resolving rule ID '${ruleId}'.`)	
 		}
-	}
-	else if (candidates.length > 1) {
+
+		throw new Error(`Unexpected error resolving rule ID '${ruleId}'.`)
+	} else if (candidates.length > 1) {
 		candidates.sort()
 		throw new Error(
 			`Ambiguous rule '${ruleId}'. Use a fully-qualified rule ID. Matches: ${candidates
