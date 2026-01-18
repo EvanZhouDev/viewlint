@@ -1,0 +1,295 @@
+import { defineRule } from "viewlint/plugin"
+
+/**
+ * Detects text with low contrast against its background.
+ *
+ * Uses screenshot-based analysis to sample the actual rendered background
+ * color behind text elements, then calculates WCAG contrast ratio.
+ */
+export default defineRule({
+	meta: {
+		severity: "warn",
+		docs: {
+			description: "Detects text with low contrast against background",
+			recommended: true,
+		},
+	},
+
+	async run(context) {
+		const MINIMUM_CONTRAST_RATIO = 2.0
+
+		// Collect text elements and their info from the page
+		type TextElementInfo = {
+			selector: string
+			textColor: { r: number; g: number; b: number }
+			rect: { x: number; y: number; width: number; height: number }
+		}
+
+		const textElements = await context.page.evaluate(() => {
+			const isHTMLElement = (el: Element | null): el is HTMLElement => {
+				return el instanceof HTMLElement
+			}
+
+			const isVisible = (el: HTMLElement): boolean => {
+				const style = window.getComputedStyle(el)
+				if (style.display === "none") return false
+				if (style.visibility === "hidden" || style.visibility === "collapse")
+					return false
+				if (parseFloat(style.opacity) === 0) return false
+				return true
+			}
+
+			const hasDirectTextContent = (el: HTMLElement): boolean => {
+				for (const child of el.childNodes) {
+					if (child.nodeType === Node.TEXT_NODE) {
+						const text = child.textContent
+						if (text && text.trim().length > 0) return true
+					}
+				}
+				return false
+			}
+
+			const parseColor = (
+				colorString: string,
+			): { r: number; g: number; b: number; a: number } | null => {
+				if (!colorString || colorString === "transparent") {
+					return { r: 0, g: 0, b: 0, a: 0 }
+				}
+
+				const canvas = document.createElement("canvas")
+				canvas.width = 1
+				canvas.height = 1
+				const ctx = canvas.getContext("2d")
+				if (!ctx) return null
+
+				ctx.clearRect(0, 0, 1, 1)
+				ctx.fillStyle = colorString
+				ctx.fillRect(0, 0, 1, 1)
+
+				const imageData = ctx.getImageData(0, 0, 1, 1)
+				const [r, g, b, a] = imageData.data
+
+				if (
+					r === undefined ||
+					g === undefined ||
+					b === undefined ||
+					a === undefined
+				) {
+					return null
+				}
+
+				return { r, g, b, a: a / 255 }
+			}
+
+			const getUniqueSelector = (el: Element): string => {
+				if (window.__viewlint_finder) {
+					return window.__viewlint_finder(el)
+				}
+
+				// Fallback
+				if (el.id) return `#${el.id}`
+				return el.tagName.toLowerCase()
+			}
+
+			const results: TextElementInfo[] = []
+			const allElements = document.querySelectorAll("*")
+
+			for (const el of allElements) {
+				if (!isHTMLElement(el)) continue
+				if (!isVisible(el)) continue
+				if (!hasDirectTextContent(el)) continue
+
+				const style = window.getComputedStyle(el)
+				const textColor = parseColor(style.color)
+				if (!textColor) continue
+
+				const rect = el.getBoundingClientRect()
+				if (rect.width <= 0 || rect.height <= 0) continue
+
+				// Skip elements outside viewport
+				if (
+					rect.bottom <= 0 ||
+					rect.right <= 0 ||
+					rect.top >= window.innerHeight ||
+					rect.left >= window.innerWidth
+				)
+					continue
+
+				results.push({
+					selector: getUniqueSelector(el),
+					textColor: { r: textColor.r, g: textColor.g, b: textColor.b },
+					rect: {
+						x: rect.x,
+						y: rect.y,
+						width: rect.width,
+						height: rect.height,
+					},
+				})
+			}
+
+			return results
+		})
+
+		if (textElements.length === 0) return
+
+		// Take a screenshot for background sampling
+		const screenshotBuffer = await context.page.screenshot({ type: "png" })
+
+		// Decode PNG to get pixel data
+		// We'll use sharp for image processing
+		const { default: sharp } = await import("sharp")
+
+		const image = sharp(screenshotBuffer)
+		const metadata = await image.metadata()
+		const { width: imgWidth, height: imgHeight } = metadata
+
+		if (!imgWidth || !imgHeight) return
+
+		// Get raw pixel data
+		const { data: pixels, info } = await image
+			.raw()
+			.toBuffer({ resolveWithObject: true })
+
+		const getPixel = (
+			x: number,
+			y: number,
+		): { r: number; g: number; b: number } | null => {
+			const px = Math.floor(x)
+			const py = Math.floor(y)
+
+			if (px < 0 || px >= info.width || py < 0 || py >= info.height) {
+				return null
+			}
+
+			const idx = (py * info.width + px) * info.channels
+			const r = pixels[idx]
+			const g = pixels[idx + 1]
+			const b = pixels[idx + 2]
+
+			if (r === undefined || g === undefined || b === undefined) {
+				return null
+			}
+
+			return { r, g, b }
+		}
+
+		const relativeLuminance = (color: {
+			r: number
+			g: number
+			b: number
+		}): number => {
+			const sRGB = [color.r, color.g, color.b].map((c) => {
+				const s = c / 255
+				return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
+			})
+
+			const r = sRGB[0] ?? 0
+			const g = sRGB[1] ?? 0
+			const b = sRGB[2] ?? 0
+
+			return 0.2126 * r + 0.7152 * g + 0.0722 * b
+		}
+
+		const contrastRatio = (
+			color1: { r: number; g: number; b: number },
+			color2: { r: number; g: number; b: number },
+		): number => {
+			const l1 = relativeLuminance(color1)
+			const l2 = relativeLuminance(color2)
+
+			const lighter = Math.max(l1, l2)
+			const darker = Math.min(l1, l2)
+
+			return (lighter + 0.05) / (darker + 0.05)
+		}
+
+		const formatColor = (color: {
+			r: number
+			g: number
+			b: number
+		}): string => {
+			return `rgb(${color.r}, ${color.g}, ${color.b})`
+		}
+
+		// Sample background color by averaging pixels around the element edges
+		const sampleBackground = (rect: {
+			x: number
+			y: number
+			width: number
+			height: number
+		}): { r: number; g: number; b: number } | null => {
+			const samples: { r: number; g: number; b: number }[] = []
+
+			// Sample from multiple points around and inside the element
+			// Focus on corners and edges where background is more likely visible
+			const samplePoints = [
+				// Corners (slightly inside)
+				{ x: rect.x + 2, y: rect.y + 2 },
+				{ x: rect.x + rect.width - 2, y: rect.y + 2 },
+				{ x: rect.x + 2, y: rect.y + rect.height - 2 },
+				{ x: rect.x + rect.width - 2, y: rect.y + rect.height - 2 },
+				// Edge midpoints (slightly inside)
+				{ x: rect.x + rect.width / 2, y: rect.y + 2 },
+				{ x: rect.x + rect.width / 2, y: rect.y + rect.height - 2 },
+				{ x: rect.x + 2, y: rect.y + rect.height / 2 },
+				{ x: rect.x + rect.width - 2, y: rect.y + rect.height / 2 },
+			]
+
+			for (const point of samplePoints) {
+				const pixel = getPixel(point.x, point.y)
+				if (pixel) samples.push(pixel)
+			}
+
+			if (samples.length === 0) return null
+
+			// Average the samples
+			let totalR = 0
+			let totalG = 0
+			let totalB = 0
+
+			for (const sample of samples) {
+				totalR += sample.r
+				totalG += sample.g
+				totalB += sample.b
+			}
+
+			return {
+				r: Math.round(totalR / samples.length),
+				g: Math.round(totalG / samples.length),
+				b: Math.round(totalB / samples.length),
+			}
+		}
+
+		// Check contrast for each text element
+		for (const element of textElements) {
+			const bgColor = sampleBackground(element.rect)
+			if (!bgColor) continue
+
+			const ratio = contrastRatio(element.textColor, bgColor)
+
+			if (ratio >= MINIMUM_CONTRAST_RATIO) continue
+
+			const ratioFormatted = ratio.toFixed(2)
+
+			// Report via evaluate to get proper element reference
+			await context.evaluate(
+				({ report, arg }) => {
+					const el = document.querySelector(arg.selector)
+					if (!el || !(el instanceof HTMLElement)) return
+
+					report({
+						message: `Text has low contrast ratio of ${arg.ratioFormatted}:1 (minimum ${arg.minimumRatio}:1). Text color: ${arg.textColorStr}, background: ${arg.bgColorStr}`,
+						element: el,
+					})
+				},
+				{
+					selector: element.selector,
+					ratioFormatted,
+					minimumRatio: MINIMUM_CONTRAST_RATIO,
+					textColorStr: formatColor(element.textColor),
+					bgColorStr: formatColor(bgColor),
+				},
+			)
+		}
+	},
+})

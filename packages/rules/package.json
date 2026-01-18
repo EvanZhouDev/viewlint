@@ -9,7 +9,7 @@
 		"@repo/typescript-config": "workspace:*",
 		"typescript": "latest",
 		"vitest": "latest",
-		"@repo/ezviewlint": "workspace:*"
+		"viewlint": "workspace:*"
 	},
 	"scripts": {
 		"test": "vitest run",
