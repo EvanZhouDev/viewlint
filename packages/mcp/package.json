@@ -1,0 +1,30 @@
+{
+	"name": "@viewlint/mcp",
+	"version": "0.0.0",
+	"description": "MCP server for ViewLint",
+	"type": "module",
+	"bin": {
+		"viewlint-mcp": "./src/mcp-cli.ts"
+	},
+	"exports": {
+		".": "./src/index.ts",
+		"./mcp-server": "./src/mcp-server.ts"
+	},
+	"files": [
+		"src"
+	],
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.24.1",
+		"viewlint": "workspace:*",
+		"zod": "^4.3.5"
+	},
+	"devDependencies": {
+		"@repo/typescript-config": "workspace:*",
+		"typescript": "5.9.2",
+		"vitest": "latest"
+	},
+	"scripts": {
+		"test": "vitest run",
+		"check-types": "tsc --noEmit"
+	}
+}
