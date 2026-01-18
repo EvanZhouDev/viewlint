@@ -47,7 +47,7 @@ export function finder(input, options) {
 	let foundPath
 	let count = 0
 	for (const candidate of search(input, config, rootDocument)) {
-		const elapsedTimeMs = new Date().getTime() - startTime.getTime()
+		const elapsedTimeMs = Date.now() - startTime.getTime()
 		if (
 			elapsedTimeMs > config.timeoutMs ||
 			count >= config.maxNumberOfPathChecks
@@ -125,7 +125,7 @@ function tie(element, config) {
 	const elementId = element.getAttribute("id")
 	if (elementId && config.idName(elementId)) {
 		level.push({
-			name: "#" + CSS.escape(elementId),
+			name: `#${CSS.escape(elementId)}`,
 			penalty: 0,
 		})
 	}
@@ -133,7 +133,7 @@ function tie(element, config) {
 		const name = element.classList[i]
 		if (config.className(name)) {
 			level.push({
-				name: "." + CSS.escape(name),
+				name: `.${CSS.escape(name)}`,
 				penalty: 1,
 			})
 		}
@@ -280,7 +280,7 @@ function unique(path, rootDocument) {
 function* optimize(path, input, config, rootDocument, startTime) {
 	if (path.length > 2 && path.length > config.optimizedMinLength) {
 		for (let i = 1; i < path.length - 1; i++) {
-			const elapsedTimeMs = new Date().getTime() - startTime.getTime()
+			const elapsedTimeMs = Date.now() - startTime.getTime()
 			if (elapsedTimeMs > config.timeoutMs) {
 				return
 			}
