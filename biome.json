@@ -1,5 +1,6 @@
 {
 	"$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
+	"plugins": ["node_modules/biome-plugin-no-type-assertion/no-type-assertion.grit"],
 	"vcs": {
 		"enabled": true,
 		"clientKind": "git",
