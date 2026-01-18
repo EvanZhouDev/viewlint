@@ -71,6 +71,7 @@ function getEnabledRuleIds(resolved: ResolvedOptions): string[] {
 }
 
 function toLintMessage(violation: {
+	ruleId: string
 	message: string
 	severity: LintMessage["severity"]
 	location: LintMessage["location"]
@@ -80,6 +81,7 @@ function toLintMessage(violation: {
 	}>
 }): LintMessage {
 	return {
+		ruleId: violation.ruleId,
 		message: violation.message,
 		location: violation.location,
 		relations: (violation.relations ?? []).map((relation) => {
@@ -608,6 +610,7 @@ export class ViewLintEngine {
 
 							bucket.push(
 								toLintMessage({
+									ruleId,
 									message: resolvedViolation.message,
 									severity: effectiveSeverity,
 									location: resolvedViolation.location,
