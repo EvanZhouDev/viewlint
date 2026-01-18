@@ -3,6 +3,9 @@
   "workspaces": {
     "": {
       "name": "viewlint",
+      "dependencies": {
+        "commander": "^14.0.2",
+      },
       "devDependencies": {
         "@biomejs/biome": "2.3.11",
         "prettier": "^3.7.4",
@@ -86,6 +89,7 @@
       "dependencies": {
         "biome-plugin-no-type-assertion": "^1.0.2",
         "chalk": "^5.6.2",
+        "commander": "^14.0.2",
         "playwright": "^1.57.0",
       },
       "devDependencies": {
@@ -573,6 +577,8 @@
     "color-name": ["color-name@1.1.4", "", {}, "sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA=="],
 
     "comma-separated-tokens": ["comma-separated-tokens@2.0.3", "", {}, "sha512-Fu4hJdvzeylCfQPp9SGWidpzrMs7tTrlu6Vb8XGaRGck8QSNZJJp538Wrb60Lax4fPwR64ViY468OIUTbRlGZg=="],
+
+    "commander": ["commander@14.0.2", "", {}, "sha512-TywoWNNRbhoD0BXs1P3ZEScW8W5iKrnbithIl0YH+uCmBd0QpPOA8yc82DS3BIE5Ma6FnBVUsJ7wVUDz4dvOWQ=="],
 
     "compute-scroll-into-view": ["compute-scroll-into-view@3.1.1", "", {}, "sha512-VRhuHOLoKYOy4UbilLbUzbYg93XLjv2PncJC50EuTWPA3gaja1UjBsUP/D/9/juV3vQFr6XBEzn9KCAHdUvOHw=="],
 
