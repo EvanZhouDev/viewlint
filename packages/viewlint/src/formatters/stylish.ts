@@ -140,7 +140,7 @@ export function formatStylish(results: LintResult[]): string {
 			lines.push(
 				`  ${chalk.dim("[")}${formatSeverityLabel(msg.severity)}${chalk.dim("]")} ${chalk.bold(
 					msg.ruleId,
-				)} ${msg.message}`,
+				)}${chalk.dim(":")} ${msg.message}`,
 			)
 
 			lines.push(`    ${formatElementInline(msg.location.element)}`)
