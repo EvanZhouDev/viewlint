@@ -43,7 +43,7 @@ export function finder(input, options) {
 	}
 	const startTime = new Date()
 	const config = { ...defaults, ...options }
-	const rootDocument = findRootDocument(config.root, defaults)
+	const rootDocument = findRootDocument(config.root, defaults, input)
 	let foundPath
 	let count = 0
 	for (const candidate of search(input, config, rootDocument)) {
@@ -91,7 +91,9 @@ function* search(input, config, rootDocument) {
 		stack.push(level)
 		current = current.parentElement
 		i++
-		paths.push(...combinations(stack))
+		for (const path of combinations(stack)) {
+			paths.push(path)
+		}
 		if (i >= config.seedMinLength) {
 			paths.sort(byPenalty)
 			for (const candidate of paths) {
@@ -248,16 +250,49 @@ function nthOfType(tagName, index) {
 	}
 	return `${tagName}:nth-of-type(${index})`
 }
-function* combinations(stack, path = []) {
-	if (stack.length > 0) {
-		for (const node of stack[0]) {
-			yield* combinations(stack.slice(1, stack.length), path.concat(node))
+function* combinations(stack) {
+	if (stack.length === 0) {
+		yield []
+		return
+	}
+
+	const nodeLists = stack
+	const indices = nodeLists.map(() => 0)
+
+	while (true) {
+		const path = []
+		for (let i = 0; i < nodeLists.length; i++) {
+			const nodeList = nodeLists[i]
+			const index = indices[i]
+			if (!nodeList || index === undefined) continue
+			path.push(nodeList[index])
 		}
-	} else {
 		yield path
+
+		let k = indices.length - 1
+		while (k >= 0) {
+			const nodeList = nodeLists[k]
+			if (!nodeList) {
+				k -= 1
+				continue
+			}
+			indices[k] += 1
+			if (indices[k] < nodeList.length) {
+				break
+			}
+			indices[k] = 0
+			k -= 1
+		}
+
+		if (k < 0) break
 	}
 }
-function findRootDocument(rootNode, defaults) {
+function findRootDocument(rootNode, defaults, input) {
+	const shadowRoot = input?.getRootNode?.()
+	if (shadowRoot?.constructor?.name === "ShadowRoot") {
+		return shadowRoot
+	}
+
 	if (rootNode.nodeType === Node.DOCUMENT_NODE) {
 		return rootNode
 	}
