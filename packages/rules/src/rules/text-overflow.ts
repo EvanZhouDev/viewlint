@@ -1,0 +1,117 @@
+import { defineRule } from "viewlint/plugin"
+import { getDomHelpersHandle } from "../utils/getDomHelpersHandle.js"
+
+/**
+ * Detects text that extends beyond its container element's bounds.
+ *
+ * Uses Range API to measure text node bounds and compares against
+ * the container element's bounding box.
+ */
+export default defineRule({
+	meta: {
+		severity: "error",
+		docs: {
+			description: "Detects text that overflows its container element",
+			recommended: true,
+		},
+	},
+
+	async run(context) {
+		const domHelpers = await getDomHelpersHandle(context.page)
+		await context.evaluate(
+			({ report, arg: { domHelpers } }) => {
+				const OVERFLOW_THRESHOLD = 1
+
+				const hasSize = (el: HTMLElement): boolean => {
+					return domHelpers.hasElementRectSize(el)
+				}
+
+				const hasTextOverflowEllipsis = (el: HTMLElement): boolean => {
+					const style = window.getComputedStyle(el)
+					return style.textOverflow === "ellipsis"
+				}
+
+				const getOverflow = (
+					containerRect: DOMRect,
+					textRect: DOMRect,
+				): {
+					top: number
+					right: number
+					bottom: number
+					left: number
+				} | null => {
+					const top = Math.max(0, containerRect.top - textRect.top)
+					const right = Math.max(0, textRect.right - containerRect.right)
+					const bottom = Math.max(0, textRect.bottom - containerRect.bottom)
+					const left = Math.max(0, containerRect.left - textRect.left)
+
+					const hasOverflow =
+						top > OVERFLOW_THRESHOLD ||
+						right > OVERFLOW_THRESHOLD ||
+						bottom > OVERFLOW_THRESHOLD ||
+						left > OVERFLOW_THRESHOLD
+
+					return hasOverflow ? { top, right, bottom, left } : null
+				}
+
+				const formatOverflow = (overflow: {
+					top: number
+					right: number
+					bottom: number
+					left: number
+				}): string => {
+					const parts: string[] = []
+
+					if (overflow.top > OVERFLOW_THRESHOLD) {
+						parts.push(`${Math.round(overflow.top)}px top`)
+					}
+					if (overflow.right > OVERFLOW_THRESHOLD) {
+						parts.push(`${Math.round(overflow.right)}px right`)
+					}
+					if (overflow.bottom > OVERFLOW_THRESHOLD) {
+						parts.push(`${Math.round(overflow.bottom)}px bottom`)
+					}
+					if (overflow.left > OVERFLOW_THRESHOLD) {
+						parts.push(`${Math.round(overflow.left)}px left`)
+					}
+
+					return parts.join(", ")
+				}
+
+				const allElements = document.querySelectorAll("*")
+
+				for (const el of allElements) {
+					if (!domHelpers.isHtmlElement(el)) continue
+					if (!domHelpers.isVisible(el)) continue
+					if (!hasSize(el)) continue
+
+					if (hasTextOverflowEllipsis(el)) continue
+
+					const containerRect = el.getBoundingClientRect()
+
+					const textNodes = domHelpers.getDirectTextNodes(el)
+
+					for (const textNode of textNodes) {
+						const textRect = domHelpers.getTextNodeBounds(textNode)
+						if (!textRect) continue
+
+						const overflow = getOverflow(containerRect, textRect)
+						if (!overflow) continue
+
+						const textPreview =
+							(textNode.textContent || "").trim().slice(0, 30) +
+							((textNode.textContent || "").length > 30 ? "..." : "")
+
+						report({
+							message: `Text "${textPreview}" overflows container by ${formatOverflow(overflow)}`,
+							element: el,
+						})
+
+						break
+					}
+				}
+			},
+			{ domHelpers },
+		)
+	},
+})

@@ -106,7 +106,8 @@ function formatSummaryLine(counts: {
 	const problems = counts.errorCount + counts.warningCount + counts.infoCount
 
 	if (problems === 0) {
-		return chalk.green("\u2716 0 problems")
+		// \u2714 is Heavy Check Mark
+		return chalk.green("\u2714 0 problems")
 	}
 
 	const parts: string[] = []
@@ -119,6 +120,7 @@ function formatSummaryLine(counts: {
 		parts.push(`${counts.infoCount} info`)
 	}
 
+	// \u2716 is Heavy Multiplication X
 	const summary = `\u2716 ${problems} problem${problems === 1 ? "" : "s"} (${parts.join(", ")})`
 
 	const highest = highestSeverityForCounts(counts)
