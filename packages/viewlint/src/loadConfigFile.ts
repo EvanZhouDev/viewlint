@@ -26,6 +26,16 @@ export async function loadViewlintConfigFromFile(
 	const exportedDefault = mod.default
 	const namedConfig = mod.config
 
+	if (
+		typeof exportedDefault === "undefined" &&
+		typeof namedConfig === "undefined"
+	) {
+		console.warn(
+			`ViewLint config file '${filePath}' did not export anything. It is being treated as an empty configuration file. If this is intentional, export default [] instead of leaving the file without exports.`,
+		)
+		return []
+	}
+
 	const candidate = exportedDefault ?? namedConfig
 
 	if (Array.isArray(candidate)) {

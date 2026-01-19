@@ -10,8 +10,19 @@ if (argv.includes("--init")) {
 	process.stdout.write("viewlint --init: Coming soon.\n")
 	process.exitCode = 0
 } else if (argv.includes("--mcp")) {
-	process.stdout.write("viewlint --mcp: Coming soon.\n")
+	console.warn(
+		"You can also run this command directly using 'npx @viewlint/mcp@latest'.",
+	)
+
+	const spawn = require("cross-spawn")
+
+	spawn.sync("npx", ["@viewlint/mcp@latest"], {
+		encoding: "utf8",
+		stdio: "inherit",
+	})
+
 	process.exitCode = 0
+	process.exit()
 } else {
 	process.exitCode = await runCli(argv)
 }
