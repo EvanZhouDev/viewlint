@@ -183,7 +183,7 @@ export default defineRule({
 
 						if (obscuringElement) {
 							report({
-								message: `Interactive element is ${percentage}% obscured and may not be clickable`,
+								message: `Interactive element is ~${percentage}% obscured and may not be clickable`,
 								element: el,
 								relations: [
 									{
@@ -194,7 +194,7 @@ export default defineRule({
 							})
 						} else {
 							report({
-								message: `Interactive element is ${percentage}% obscured and may not be clickable`,
+								message: `Interactive element is ~${percentage}% obscured and may not be clickable`,
 								element: el,
 							})
 						}

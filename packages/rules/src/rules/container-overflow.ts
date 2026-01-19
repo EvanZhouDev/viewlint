@@ -18,7 +18,10 @@ export default defineRule({
 
 	async run(context) {
 		await context.evaluate(({ report }) => {
+			// Small overflow for containers that clip
 			const OVERFLOW_THRESHOLD = 1
+			// Larger threshold for visible overflow containers (likely intentional small overlaps)
+			const VISIBLE_OVERFLOW_THRESHOLD = 20
 
 			const isHTMLElement = (el: Element | null): el is HTMLElement => {
 				return el instanceof HTMLElement
@@ -58,6 +61,32 @@ export default defineRule({
 				)
 			}
 
+			/**
+			 * Check if an element appears to be a layout container that should
+			 * contain its children (not just a wrapper div).
+			 */
+			const isLayoutContainer = (el: HTMLElement): boolean => {
+				const style = window.getComputedStyle(el)
+
+				// Flex or grid containers are intentional layout containers
+				if (style.display === "flex" || style.display === "inline-flex") {
+					return true
+				}
+				if (style.display === "grid" || style.display === "inline-grid") {
+					return true
+				}
+
+				// Elements with explicit sizing are intentional containers
+				if (style.width !== "auto" && !style.width.includes("%")) {
+					return true
+				}
+				if (style.maxWidth !== "none") {
+					return true
+				}
+
+				return false
+			}
+
 			const hasSize = (el: HTMLElement): boolean => {
 				const rect = el.getBoundingClientRect()
 				return rect.width > 0 && rect.height > 0
@@ -66,6 +95,7 @@ export default defineRule({
 			const getOverflow = (
 				parentRect: DOMRect,
 				childRect: DOMRect,
+				threshold: number,
 			): {
 				top: number
 				right: number
@@ -78,32 +108,35 @@ export default defineRule({
 				const left = Math.max(0, parentRect.left - childRect.left)
 
 				const hasOverflow =
-					top > OVERFLOW_THRESHOLD ||
-					right > OVERFLOW_THRESHOLD ||
-					bottom > OVERFLOW_THRESHOLD ||
-					left > OVERFLOW_THRESHOLD
+					top > threshold ||
+					right > threshold ||
+					bottom > threshold ||
+					left > threshold
 
 				return hasOverflow ? { top, right, bottom, left } : null
 			}
 
-			const formatOverflow = (overflow: {
-				top: number
-				right: number
-				bottom: number
-				left: number
-			}): string => {
+			const formatOverflow = (
+				overflow: {
+					top: number
+					right: number
+					bottom: number
+					left: number
+				},
+				threshold: number,
+			): string => {
 				const parts: string[] = []
 
-				if (overflow.top > OVERFLOW_THRESHOLD) {
+				if (overflow.top > threshold) {
 					parts.push(`${Math.round(overflow.top)}px top`)
 				}
-				if (overflow.right > OVERFLOW_THRESHOLD) {
+				if (overflow.right > threshold) {
 					parts.push(`${Math.round(overflow.right)}px right`)
 				}
-				if (overflow.bottom > OVERFLOW_THRESHOLD) {
+				if (overflow.bottom > threshold) {
 					parts.push(`${Math.round(overflow.bottom)}px bottom`)
 				}
-				if (overflow.left > OVERFLOW_THRESHOLD) {
+				if (overflow.left > threshold) {
 					parts.push(`${Math.round(overflow.left)}px left`)
 				}
 
@@ -125,25 +158,55 @@ export default defineRule({
 				if (!isVisible(parent)) continue
 				if (!hasSize(parent)) continue
 
-				// If the container explicitly allows visual overflow, don't report.
-				if (hasVisibleOverflow(parent)) continue
+				// Skip body as parent - content overflowing body is normal for scrollable pages
+				if (parent.tagName === "BODY" || parent.tagName === "HTML") continue
 
 				const parentRect = parent.getBoundingClientRect()
 				const childRect = el.getBoundingClientRect()
 
-				const overflow = getOverflow(parentRect, childRect)
-				if (!overflow) continue
+				const parentHasVisibleOverflow = hasVisibleOverflow(parent)
 
-				report({
-					message: `Element overflows its container by ${formatOverflow(overflow)}`,
-					element: el,
-					relations: [
-						{
-							description: "Container",
-							element: parent,
-						},
-					],
-				})
+				// For visible overflow containers, use higher threshold and only
+				// check if parent looks like a proper layout container
+				if (parentHasVisibleOverflow) {
+					if (!isLayoutContainer(parent)) continue
+
+					const overflow = getOverflow(
+						parentRect,
+						childRect,
+						VISIBLE_OVERFLOW_THRESHOLD,
+					)
+					if (!overflow) continue
+
+					report({
+						message: `Element overflows its container by ${formatOverflow(overflow, VISIBLE_OVERFLOW_THRESHOLD)}`,
+						element: el,
+						relations: [
+							{
+								description: "Container",
+								element: parent,
+							},
+						],
+					})
+				} else {
+					const overflow = getOverflow(
+						parentRect,
+						childRect,
+						OVERFLOW_THRESHOLD,
+					)
+					if (!overflow) continue
+
+					report({
+						message: `Element overflows its container by ${formatOverflow(overflow, OVERFLOW_THRESHOLD)}`,
+						element: el,
+						relations: [
+							{
+								description: "Container",
+								element: parent,
+							},
+						],
+					})
+				}
 			}
 		})
 	},

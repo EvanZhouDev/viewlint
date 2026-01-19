@@ -1,4 +1,5 @@
 import { defineRule } from "viewlint/plugin"
+import sharp from "sharp"
 
 /**
  * Detects text with low contrast against its background.
@@ -136,8 +137,6 @@ export default defineRule({
 		const screenshotBuffer = await context.page.screenshot({ type: "png" })
 
 		// Decode PNG to get pixel data
-		// We'll use sharp for image processing
-		const { default: sharp } = await import("sharp")
 
 		const image = sharp(screenshotBuffer)
 		const metadata = await image.metadata()
