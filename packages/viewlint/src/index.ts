@@ -71,3 +71,5 @@ export class ViewLint {
 		return formatterFromId(nameOrPath)
 	}
 }
+
+export * from "./types.js"

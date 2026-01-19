@@ -247,6 +247,8 @@ export class ViewLintEngine {
 
 					const messages: LintMessage[] = []
 					const suppressedMessages: LintMessage[] = []
+					let isBrowserReportInstalled = false
+					let activeBufferedViolations: ViolationReport[] | undefined
 
 					for (let i = 0; i < enabledRuleIds.length; i++) {
 						const ruleId = enabledRuleIds[i]
@@ -262,10 +264,6 @@ export class ViewLintEngine {
 						}
 
 						const bufferedViolations: ViolationReport[] = []
-
-						let isBrowserReportInstalled = false
-
-						let activeBufferedViolations: ViolationReport[] | undefined
 
 						type PageViolationReportWire = {
 							message: string
