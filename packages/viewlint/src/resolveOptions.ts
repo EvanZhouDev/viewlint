@@ -57,9 +57,6 @@ export type ResolvedOptions = {
 	ruleRegistry: Map<string, RuleDefinition>
 	rules: Map<string, NormalizedRuleConfig>
 	browser: ResolvedBrowserOptions
-	debug: {
-		verbose: boolean
-	}
 }
 
 function getErrorMessage(error: unknown): string {
@@ -275,8 +272,5 @@ export function resolveOptions(options: Options): ResolvedOptions {
 		ruleRegistry,
 		rules,
 		browser: resolveBrowserOptions(options.browser),
-		debug: {
-			verbose: options.debug?.verbose ?? false,
-		},
 	}
 }

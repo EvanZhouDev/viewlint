@@ -188,10 +188,6 @@ export type Options = {
 	overrideConfigFile?: string
 	plugins?: Record<string, Plugin>
 
-	debug?: {
-		verbose?: boolean
-	}
-
 	browser?: {
 		headless?: boolean
 		viewport?: {

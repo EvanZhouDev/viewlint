@@ -13,5 +13,13 @@ if (argv.includes("--init")) {
 	process.stdout.write("viewlint --mcp: Coming soon.\n")
 	process.exitCode = 0
 } else {
+	// Align with ESLint: enable debug logging before requiring most modules.
+	if (argv.includes("--verbose")) {
+		// Enable all viewlint debug namespaces.
+		// Note: keep `debug` dependency implicit (already in dependency graph).
+		const debug = await import("debug")
+		debug.default.enable("viewlint*")
+	}
+
 	process.exitCode = await runCli(argv)
 }

@@ -12,6 +12,7 @@ type CliOptions = {
 	outputFile?: string
 	quiet: boolean
 	maxWarnings: number
+	// Used for help output; debug wiring is handled in bin/viewlint.ts.
 	verbose: boolean
 
 	// Parsed for help text completeness, but handled by the bin entrypoint.
@@ -154,9 +155,6 @@ async function execute(options: CliOptions, urls: string[]): Promise<number> {
 
 	const viewlint = new ViewLint({
 		overrideConfigFile: options.config,
-		debug: {
-			verbose: options.verbose,
-		},
 	})
 
 	let results: LintResult[]
