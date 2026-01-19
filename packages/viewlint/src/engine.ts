@@ -1,6 +1,12 @@
 import fs from "node:fs"
 
-import { chromium, type JSHandle, type Locator, type Page } from "playwright"
+import {
+	type BrowserContext,
+	chromium,
+	type JSHandle,
+	type Locator,
+	type Page,
+} from "playwright"
 
 import type { ResolvedOptions } from "./resolveOptions.js"
 import type {
@@ -24,6 +30,11 @@ const DISABLE_ANIMATIONS_CSS = `
 	scroll-behavior: auto !important;
 }
 `
+
+type PageBundle = {
+	page: Page
+	isBrowserReportInstalled: boolean
+}
 
 declare global {
 	interface Window {
@@ -216,6 +227,18 @@ export class ViewLintEngine {
 		process.stderr.write(`${message}\n`)
 	}
 
+	private async createPageBundle(context: BrowserContext): Promise<PageBundle> {
+		const page = await context.newPage()
+		this.logVerbose("[viewlint] inject finder runtime")
+		await page.addInitScript({ content: getFinderInitScript() })
+
+		return { page, isBrowserReportInstalled: false }
+	}
+
+	private async disposePageBundle(bundle: PageBundle): Promise<void> {
+		await bundle.page.close()
+	}
+
 	private async setupBrowser(page: Page, url: string): Promise<void> {
 		this.logVerbose(`[viewlint] goto ${url}`)
 		await page.goto(url, {
@@ -247,33 +270,46 @@ export class ViewLintEngine {
 			const results: LintResult[] = []
 
 			for (const url of urlList) {
-				const page = await context.newPage()
-				this.logVerbose("[viewlint] inject finder runtime")
-				await page.addInitScript({ content: getFinderInitScript() })
+				const baseBundle = await this.createPageBundle(context)
 
 				try {
-					await this.setupBrowser(page, url)
+					await this.setupBrowser(baseBundle.page, url)
 
 					const messages: LintMessage[] = []
 					const suppressedMessages: LintMessage[] = []
-					let isBrowserReportInstalled = false
 					let activeBufferedViolations: ViolationReport[] | undefined
+
+					let currentBundle: PageBundle = baseBundle
 
 					for (let i = 0; i < enabledRuleIds.length; i++) {
 						const ruleId = enabledRuleIds[i]
 						if (!ruleId) throw new Error("Internal error: missing enabled rule")
 
-						const ruleStartMs = Date.now()
-						this.logVerbose(`[viewlint] rule:start ${ruleId}`)
-
 						const ruleConfig = this.resolved.rules.get(ruleId)
 						const rule = this.resolved.ruleRegistry.get(ruleId)
+
+						const ruleStartMs = Date.now()
+						this.logVerbose(`[viewlint] rule:start ${ruleId}`)
 
 						if (!ruleConfig || !rule) {
 							throw new Error(
 								`Internal error: enabled rule '${ruleId}' is missing from resolved config.`,
 							)
 						}
+
+						const hasSideEffects = rule.meta?.hasSideEffects === true
+						const activeBundle = hasSideEffects
+							? await this.createPageBundle(context)
+							: currentBundle
+
+						if (hasSideEffects) {
+							this.logVerbose(`[viewlint] rule:isolate ${ruleId}`)
+							await this.setupBrowser(activeBundle.page, url)
+						}
+
+						const page = activeBundle.page
+						let isBrowserReportInstalled = activeBundle.isBrowserReportInstalled
+						// Keep bundle state in sync if we install the binding.
 
 						const bufferedViolations: ViolationReport[] = []
 
@@ -293,7 +329,7 @@ export class ViewLintEngine {
 
 							await page.exposeBinding(
 								"__viewlint_report",
-								async (_source, wire: PageViolationReportWire) => {
+								async (_source: unknown, wire: PageViolationReportWire) => {
 									if (!activeBufferedViolations) {
 										throw new Error(
 											"viewlint internal error: __viewlint_report called with no active rule",
@@ -556,6 +592,13 @@ export class ViewLintEngine {
 							}, initialScroll)
 						}
 
+						activeBundle.isBrowserReportInstalled = isBrowserReportInstalled
+						if (hasSideEffects) {
+							await this.disposePageBundle(activeBundle)
+						} else {
+							currentBundle = activeBundle
+						}
+
 						type ResolvedViolation = {
 							message: string
 							location: LintLocation
@@ -635,11 +678,7 @@ export class ViewLintEngine {
 							)
 						}
 
-						// Reset page state between rule runs so one rule can't affect another.
-						if (i < enabledRuleIds.length - 1) {
-							this.logVerbose(`[viewlint] rule:reset ${ruleId}`)
-							await this.setupBrowser(page, url)
-						}
+						// Side effect rules are run in a fresh page instance per rule.
 					}
 
 					results.push({
@@ -649,7 +688,7 @@ export class ViewLintEngine {
 						...computeCounts(messages),
 					})
 				} finally {
-					await page.close()
+					await this.disposePageBundle(baseBundle)
 				}
 			}
 
