@@ -1,5 +1,6 @@
-import { defineRule } from "viewlint/plugin"
 import sharp from "sharp"
+import { defineRule } from "viewlint/plugin"
+import { getDomHelpersHandle } from "../utils/getDomHelpersHandle.js"
 
 /**
  * Detects text with low contrast against its background.
@@ -26,110 +27,98 @@ export default defineRule({
 			rect: { x: number; y: number; width: number; height: number }
 		}
 
-		const textElements = await context.page.evaluate(() => {
-			const isHTMLElement = (el: Element | null): el is HTMLElement => {
-				return el instanceof HTMLElement
-			}
+		const domHelpers = await getDomHelpersHandle(context.page)
 
-			const isVisible = (el: HTMLElement): boolean => {
-				const style = window.getComputedStyle(el)
-				if (style.display === "none") return false
-				if (style.visibility === "hidden" || style.visibility === "collapse")
-					return false
-				if (parseFloat(style.opacity) === 0) return false
-				return true
-			}
+		const textElements = await context.evaluate(
+			({ arg: { domHelpers } }) => {
 
-			const hasDirectTextContent = (el: HTMLElement): boolean => {
-				for (const child of el.childNodes) {
-					if (child.nodeType === Node.TEXT_NODE) {
-						const text = child.textContent
-						if (text && text.trim().length > 0) return true
+				const hasDirectTextContent = (el: HTMLElement): boolean => {
+					return domHelpers.getDirectTextNodes(el).length > 0
+				}
+
+				const parseColor = (
+					colorString: string,
+				): { r: number; g: number; b: number; a: number } | null => {
+					if (!colorString || colorString === "transparent") {
+						return { r: 0, g: 0, b: 0, a: 0 }
 					}
-				}
-				return false
-			}
 
-			const parseColor = (
-				colorString: string,
-			): { r: number; g: number; b: number; a: number } | null => {
-				if (!colorString || colorString === "transparent") {
-					return { r: 0, g: 0, b: 0, a: 0 }
-				}
+					const canvas = document.createElement("canvas")
+					canvas.width = 1
+					canvas.height = 1
+					const ctx = canvas.getContext("2d")
+					if (!ctx) return null
 
-				const canvas = document.createElement("canvas")
-				canvas.width = 1
-				canvas.height = 1
-				const ctx = canvas.getContext("2d")
-				if (!ctx) return null
+					ctx.clearRect(0, 0, 1, 1)
+					ctx.fillStyle = colorString
+					ctx.fillRect(0, 0, 1, 1)
 
-				ctx.clearRect(0, 0, 1, 1)
-				ctx.fillStyle = colorString
-				ctx.fillRect(0, 0, 1, 1)
+					const imageData = ctx.getImageData(0, 0, 1, 1)
+					const [r, g, b, a] = imageData.data
 
-				const imageData = ctx.getImageData(0, 0, 1, 1)
-				const [r, g, b, a] = imageData.data
+					if (
+						r === undefined ||
+						g === undefined ||
+						b === undefined ||
+						a === undefined
+					) {
+						return null
+					}
 
-				if (
-					r === undefined ||
-					g === undefined ||
-					b === undefined ||
-					a === undefined
-				) {
-					return null
+					return { r, g, b, a: a / 255 }
 				}
 
-				return { r, g, b, a: a / 255 }
-			}
+				const getUniqueSelector = (el: Element): string => {
+					if (window.__viewlint_finder) {
+						return window.__viewlint_finder(el)
+					}
 
-			const getUniqueSelector = (el: Element): string => {
-				if (window.__viewlint_finder) {
-					return window.__viewlint_finder(el)
+					// Fallback
+					if (el.id) return `#${el.id}`
+					return el.tagName.toLowerCase()
 				}
 
-				// Fallback
-				if (el.id) return `#${el.id}`
-				return el.tagName.toLowerCase()
-			}
+				const results: TextElementInfo[] = []
+				const allElements = document.querySelectorAll("*")
 
-			const results: TextElementInfo[] = []
-			const allElements = document.querySelectorAll("*")
+				for (const el of allElements) {
+					if (!domHelpers.isHtmlElement(el)) continue
 
-			for (const el of allElements) {
-				if (!isHTMLElement(el)) continue
-				if (!isVisible(el)) continue
-				if (!hasDirectTextContent(el)) continue
+					if (!domHelpers.isVisible(el)) continue
+					if (!hasDirectTextContent(el)) continue
 
-				const style = window.getComputedStyle(el)
-				const textColor = parseColor(style.color)
-				if (!textColor) continue
+					const style = window.getComputedStyle(el)
+					const textColor = parseColor(style.color)
+					if (!textColor) continue
 
-				const rect = el.getBoundingClientRect()
-				if (rect.width <= 0 || rect.height <= 0) continue
+					const rect = domHelpers.getTextBounds(el, 1)
+					if (!rect) continue
 
-				// Skip elements outside viewport
-				if (
-					rect.bottom <= 0 ||
-					rect.right <= 0 ||
-					rect.top >= window.innerHeight ||
-					rect.left >= window.innerWidth
-				)
-					continue
+					// Skip elements outside viewport
+					if (
+						rect.bottom <= 0 ||
+						rect.right <= 0 ||
+						rect.top >= window.innerHeight ||
+						rect.left >= window.innerWidth
+					)
+						continue
 
-				results.push({
-					selector: getUniqueSelector(el),
-					textColor: { r: textColor.r, g: textColor.g, b: textColor.b },
-					rect: {
-						x: rect.x,
-						y: rect.y,
-						width: rect.width,
-						height: rect.height,
-					},
-				})
-			}
+					results.push({
+						selector: getUniqueSelector(el),
+						textColor: { r: textColor.r, g: textColor.g, b: textColor.b },
+						rect: {
+							x: rect.x,
+							y: rect.y,
+							width: rect.width,
+							height: rect.height,
+						},
+					})
+				}
 
-			return results
-		})
+				return results
+			},
+			{ domHelpers },
+		)
 
 		if (textElements.length === 0) return
 
@@ -219,8 +208,9 @@ export default defineRule({
 		}): { r: number; g: number; b: number } | null => {
 			const samples: { r: number; g: number; b: number }[] = []
 
-			// Sample from multiple points around and inside the element
-			// Focus on corners and edges where background is more likely visible
+			// Sample from multiple points around the text bounds.
+			// Avoid sampling "around the element" because padding/background from
+			// surrounding layout can produce unexpected results.
 			const samplePoints = [
 				// Corners (slightly inside)
 				{ x: rect.x + 2, y: rect.y + 2 },
@@ -232,6 +222,8 @@ export default defineRule({
 				{ x: rect.x + rect.width / 2, y: rect.y + rect.height - 2 },
 				{ x: rect.x + 2, y: rect.y + rect.height / 2 },
 				{ x: rect.x + rect.width - 2, y: rect.y + rect.height / 2 },
+				// Center
+				{ x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 },
 			]
 
 			for (const point of samplePoints) {
