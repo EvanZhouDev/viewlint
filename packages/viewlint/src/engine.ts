@@ -211,13 +211,20 @@ export class ViewLintEngine {
 		this.resolved = resolved
 	}
 
+	private logVerbose(message: string): void {
+		if (!this.resolved.debug.verbose) return
+		process.stderr.write(`${message}\n`)
+	}
+
 	private async setupBrowser(page: Page, url: string): Promise<void> {
+		this.logVerbose(`[viewlint] goto ${url}`)
 		await page.goto(url, {
 			waitUntil: this.resolved.browser.waitUntil,
 			timeout: this.resolved.browser.timeoutMs,
 		})
 
 		if (this.resolved.browser.disableAnimations) {
+			this.logVerbose("[viewlint] inject disable-animations css")
 			await page.addStyleTag({ content: DISABLE_ANIMATIONS_CSS })
 		}
 	}
@@ -226,6 +233,7 @@ export class ViewLintEngine {
 		const urlList = Array.isArray(urls) ? urls : [urls]
 
 		const enabledRuleIds = getEnabledRuleIds(this.resolved)
+		this.logVerbose(`[viewlint] enabled rules: ${enabledRuleIds.length}`)
 
 		const browser = await chromium.launch({
 			headless: this.resolved.browser.headless,
@@ -240,6 +248,7 @@ export class ViewLintEngine {
 
 			for (const url of urlList) {
 				const page = await context.newPage()
+				this.logVerbose("[viewlint] inject finder runtime")
 				await page.addInitScript({ content: getFinderInitScript() })
 
 				try {
@@ -253,6 +262,9 @@ export class ViewLintEngine {
 					for (let i = 0; i < enabledRuleIds.length; i++) {
 						const ruleId = enabledRuleIds[i]
 						if (!ruleId) throw new Error("Internal error: missing enabled rule")
+
+						const ruleStartMs = Date.now()
+						this.logVerbose(`[viewlint] rule:start ${ruleId}`)
 
 						const ruleConfig = this.resolved.rules.get(ruleId)
 						const rule = this.resolved.ruleRegistry.get(ruleId)
@@ -277,6 +289,7 @@ export class ViewLintEngine {
 						const installBrowserReportIfNeeded = async (): Promise<void> => {
 							if (isBrowserReportInstalled) return
 							isBrowserReportInstalled = true
+							this.logVerbose("[viewlint] install browser report binding")
 
 							await page.exposeBinding(
 								"__viewlint_report",
@@ -372,6 +385,8 @@ export class ViewLintEngine {
 							JSHandle<BrowserReportFn>
 						> {
 							await installBrowserReportIfNeeded()
+							// Note: This runs inside each rule so we can re-init after navigations.
+							// When verbose is enabled, the outer engine logs rule start/finish.
 
 							await page.evaluate(() => {
 								// Already set up, skip
@@ -531,6 +546,9 @@ export class ViewLintEngine {
 								report,
 								evaluate,
 							})
+							this.logVerbose(
+								`[viewlint] rule:finish ${ruleId} (${Date.now() - ruleStartMs}ms)`,
+							)
 						} finally {
 							activeBufferedViolations = undefined
 							await page.evaluate((pos: ScrollPosition) => {
@@ -619,6 +637,7 @@ export class ViewLintEngine {
 
 						// Reset page state between rule runs so one rule can't affect another.
 						if (i < enabledRuleIds.length - 1) {
+							this.logVerbose(`[viewlint] rule:reset ${ruleId}`)
 							await this.setupBrowser(page, url)
 						}
 					}

@@ -181,6 +181,11 @@ export type Options = {
 	overrideConfig?: Config | Config[]
 	overrideConfigFile?: string
 	plugins?: Record<string, Plugin>
+
+	debug?: {
+		verbose?: boolean
+	}
+
 	browser?: {
 		headless?: boolean
 		viewport?: {
