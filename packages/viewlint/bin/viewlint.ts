@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import { runCli } from "../src/cli.js"
+import debug from "debug"
 
 const argv = process.argv
 
@@ -16,8 +17,6 @@ if (argv.includes("--init")) {
 	// Align with ESLint: enable debug logging before requiring most modules.
 	if (argv.includes("--verbose")) {
 		// Enable all viewlint debug namespaces.
-		// Note: keep `debug` dependency implicit (already in dependency graph).
-		const debug = await import("debug")
 		debug.default.enable("viewlint*")
 	}
 
