@@ -1,6 +1,9 @@
 // License: MIT
 // Author: Anton Medvedev <anton@medv.io>
 // Source: https://github.com/antonmedv/finder
+
+// Modified by Evan Zhou for ViewLint.
+
 const acceptedAttrNames = new Set(["role", "name", "aria-label", "rel", "href"])
 /** Check if attribute name and value are word-like. */
 export function attr(name, value) {
