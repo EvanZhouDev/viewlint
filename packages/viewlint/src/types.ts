@@ -141,6 +141,12 @@ export type RuleMeta<
 	schema?: Schema
 	defaultOptions?: InferRuleOptions<Schema>
 	docs?: RuleDocs
+
+	/**
+	 * If true, the rule is assumed to mutate page state (scroll, click, DOM edits, etc)
+	 * and must run in an isolated page instance.
+	 */
+	hasSideEffects?: boolean
 }
 
 export type RuleDefinition<
@@ -181,6 +187,7 @@ export type Options = {
 	overrideConfig?: Config | Config[]
 	overrideConfigFile?: string
 	plugins?: Record<string, Plugin>
+
 	browser?: {
 		headless?: boolean
 		viewport?: {

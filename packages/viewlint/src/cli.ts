@@ -12,6 +12,8 @@ type CliOptions = {
 	outputFile?: string
 	quiet: boolean
 	maxWarnings: number
+	// Used for help output; debug wiring is handled in bin/viewlint.ts.
+	verbose: boolean
 
 	// Parsed for help text completeness, but handled by the bin entrypoint.
 	init?: boolean
@@ -232,6 +234,7 @@ export async function runCli(argv: string[]): Promise<number> {
 
 	program
 		.optionsGroup("Miscellaneous:")
+		.option("--verbose", "Log progress details to stderr", false)
 		.option("--init", "Run config initialization wizard (coming soon)", false)
 		.option("--mcp", "Start the ViewLint MCP server (coming soon)", false)
 		.version(version, "-v, --version", "Output the version number")
