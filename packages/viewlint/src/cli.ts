@@ -4,7 +4,12 @@ import path from "node:path"
 import { Command, InvalidArgumentError } from "commander"
 
 import { ViewLint } from "./index.js"
-import type { LintMessage, LintResult, LoadedFormatter } from "./types.js"
+import type {
+	LintMessage,
+	LintResult,
+	LoadedFormatter,
+	Target,
+} from "./types.js"
 
 type CliOptions = {
 	config?: string
@@ -145,10 +150,49 @@ function filterResultsForQuietMode(results: LintResult[]): LintResult[] {
 	})
 }
 
-async function execute(options: CliOptions, urls: string[]): Promise<number> {
-	if (urls.length === 0) {
+/**
+ * Checks if a string is a valid absolute URL.
+ */
+function isValidUrl(value: string): boolean {
+	try {
+		const url = new URL(value)
+		return url.protocol === "http:" || url.protocol === "https:"
+	} catch {
+		return false
+	}
+}
+
+/**
+ * Parses CLI arguments into Targets.
+ * Each argument is either a URL (if it parses as an absolute URL) or a scene name.
+ */
+function parseTargets(
+	args: string[],
+	knownSceneNames: Set<string>,
+): { targets: Target[]; errors: string[] } {
+	const targets: Target[] = []
+	const errors: string[] = []
+
+	for (const arg of args) {
+		if (isValidUrl(arg)) {
+			targets.push({ kind: "url", id: arg, url: arg })
+		} else if (knownSceneNames.has(arg)) {
+			targets.push({ kind: "scene", id: arg, sceneName: arg })
+		} else {
+			// Not a URL and not a known scene
+			errors.push(
+				`Unknown target '${arg}'. Expected a URL (https://...) or a scene name defined in config.`,
+			)
+		}
+	}
+
+	return { targets, errors }
+}
+
+async function execute(options: CliOptions, args: string[]): Promise<number> {
+	if (args.length === 0) {
 		process.stderr.write(
-			"No URLs provided.\n\nPass one or more URLs, e.g. `viewlint https://example.com`.\n",
+			"No targets provided.\n\nPass one or more URLs or scene names, e.g. `viewlint https://example.com` or `viewlint my-scene`.\n",
 		)
 		return 2
 	}
@@ -157,9 +201,32 @@ async function execute(options: CliOptions, urls: string[]): Promise<number> {
 		overrideConfigFile: options.config,
 	})
 
+	// Get known scene names from config to validate arguments
+	let sceneNames: string[]
+	try {
+		sceneNames = await viewlint.getSceneNames()
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error)
+		process.stderr.write(`Failed to load config: ${message}\n`)
+		return 2
+	}
+
+	const knownSceneNames = new Set(sceneNames)
+	const { targets, errors } = parseTargets(args, knownSceneNames)
+
+	if (errors.length > 0) {
+		for (const error of errors) {
+			process.stderr.write(`${error}\n`)
+		}
+		if (sceneNames.length > 0) {
+			process.stderr.write(`\nAvailable scenes: ${sceneNames.join(", ")}\n`)
+		}
+		return 2
+	}
+
 	let results: LintResult[]
 	try {
-		results = await viewlint.lintUrls(urls)
+		results = await viewlint.lintTargets(targets)
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error)
 		process.stderr.write(`${message}\n`)
@@ -204,8 +271,8 @@ export async function runCli(argv: string[]): Promise<number> {
 	program
 		.name("viewlint")
 		.description("Lint accessibility and UI issues on web pages")
-		.usage("[options] <url> [url]")
-		.argument("[url...]", "One or more URLs to lint")
+		.usage("[options] <target> [target]")
+		.argument("[target...]", "One or more URLs or scene names to lint")
 		.showHelpAfterError()
 		.allowUnknownOption(false)
 
@@ -240,8 +307,8 @@ export async function runCli(argv: string[]): Promise<number> {
 		.version(version, "-v, --version", "Output the version number")
 		.helpOption("-h, --help", "Show help")
 
-	program.action(async (urls: string[], options: CliOptions) => {
-		exitCode = await execute(options, urls)
+	program.action(async (targets: string[], options: CliOptions) => {
+		exitCode = await execute(options, targets)
 	})
 
 	program.exitOverride()

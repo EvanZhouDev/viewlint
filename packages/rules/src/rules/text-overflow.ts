@@ -19,7 +19,7 @@ export default defineRule({
 	async run(context) {
 		const domHelpers = await getDomHelpersHandle(context.page)
 		await context.evaluate(
-			({ report, arg: { domHelpers } }) => {
+			({ report, scope, arg: { domHelpers } }) => {
 				const OVERFLOW_THRESHOLD = 1
 
 				const hasSize = (el: HTMLElement): boolean => {
@@ -78,7 +78,7 @@ export default defineRule({
 					return parts.join(", ")
 				}
 
-				const allElements = document.querySelectorAll("*")
+				const allElements = scope.queryAll("*")
 
 				for (const el of allElements) {
 					if (!domHelpers.isHtmlElement(el)) continue

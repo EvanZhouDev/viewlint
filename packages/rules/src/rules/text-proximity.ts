@@ -23,7 +23,7 @@ export default defineRule({
 	async run(context) {
 		const domHelpers = await getDomHelpersHandle(context.page)
 		await context.evaluate(
-			({ report, arg: { domHelpers } }) => {
+			({ report, scope, arg: { domHelpers } }) => {
 				// 35% of font-size as threshold
 				const MIN_GAP_FACTOR = 0.35
 				// Absolute minimum gap in pixels (text under this is definitely too close)
@@ -79,7 +79,7 @@ export default defineRule({
 				}
 
 				const textElements: TextElement[] = []
-				const allElements = document.querySelectorAll("*")
+				const allElements = scope.queryAll("*")
 
 				for (const el of allElements) {
 					if (!domHelpers.isHtmlElement(el)) continue

@@ -7,13 +7,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null
 }
 
+const CONFIG_OBJECT_KEYS = new Set(["plugins", "rules", "browser", "scenes"])
+
 function isConfigObject(value: unknown): value is ConfigObject {
 	if (!isRecord(value)) return false
 
 	const keys = Object.keys(value)
-	return (
-		keys.length > 0 && keys.every((key) => key === "plugins" || key === "rules")
-	)
+	return keys.length > 0 && keys.every((key) => CONFIG_OBJECT_KEYS.has(key))
 }
 
 export async function loadViewlintConfigFromFile(

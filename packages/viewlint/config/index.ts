@@ -181,7 +181,7 @@ function applyConfig(
 		}
 
 		const { extends: _extends, ...rest } = config
-		if (rest.plugins || rest.rules) {
+		if (rest.plugins || rest.rules || rest.browser || rest.scenes) {
 			state.output.push(rest)
 		}
 	} finally {

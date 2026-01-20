@@ -20,7 +20,7 @@ export default defineRule({
 		const domHelpers = await getDomHelpersHandle(context.page)
 
 		await context.evaluate(
-			({ report, arg: { domHelpers } }) => {
+			({ report, scope, arg: { domHelpers } }) => {
 				const MIN_SCROLL_OVERFLOW = 1
 				const MAX_UNEXPECTED_OVERFLOW = 20
 
@@ -77,12 +77,13 @@ export default defineRule({
 					})
 				}
 
+				// Also check document.documentElement and document.body (global scope)
 				checkElement(document.documentElement)
 				if (document.body) {
 					checkElement(document.body)
 				}
 
-				const allElements = document.querySelectorAll("*")
+				const allElements = scope.queryAll("*")
 
 				for (const el of allElements) {
 					if (!domHelpers.isHtmlElement(el)) continue

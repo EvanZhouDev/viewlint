@@ -12,6 +12,7 @@ import type {
 	LoadedFormatter,
 	Options,
 	RulesConfig,
+	Target,
 } from "./types.js"
 
 export class ViewLint {
@@ -65,6 +66,21 @@ export class ViewLint {
 	async lintUrls(urls: string | string[]): Promise<LintResult[]> {
 		const engine = await this.#ensureInitialized()
 		return engine.lintUrls(urls)
+	}
+
+	async lintTargets(targets: Target[]): Promise<LintResult[]> {
+		const engine = await this.#ensureInitialized()
+		return engine.lintTargets(targets)
+	}
+
+	/**
+	 * Retrieves scenes defined in the resolved config.
+	 * This allows CLI to validate scene names before linting.
+	 */
+	async getSceneNames(): Promise<string[]> {
+		await this.#ensureInitialized()
+		if (!this.#resolved) return []
+		return [...this.#resolved.scenes.keys()]
 	}
 
 	async loadFormatter(nameOrPath?: string): Promise<LoadedFormatter> {

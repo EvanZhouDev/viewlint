@@ -30,8 +30,7 @@ export default defineRule({
 		const domHelpers = await getDomHelpersHandle(context.page)
 
 		const textElements = await context.evaluate(
-			({ arg: { domHelpers } }) => {
-
+			({ scope, arg: { domHelpers } }) => {
 				const hasDirectTextContent = (el: HTMLElement): boolean => {
 					return domHelpers.getDirectTextNodes(el).length > 0
 				}
@@ -79,7 +78,7 @@ export default defineRule({
 				}
 
 				const results: TextElementInfo[] = []
-				const allElements = document.querySelectorAll("*")
+				const allElements = scope.queryAll("*")
 
 				for (const el of allElements) {
 					if (!domHelpers.isHtmlElement(el)) continue

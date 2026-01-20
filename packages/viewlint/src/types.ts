@@ -31,6 +31,119 @@ export type Unboxed<Arg> =
 										? { [Key in keyof Arg]: Unboxed<Arg[Key]> }
 										: Arg
 
+// ============================================================================
+// Browser Options
+// ============================================================================
+
+/**
+ * Browser environment configuration.
+ * Used globally in config and can be overridden per-scene.
+ */
+export type BrowserOptions = {
+	headless?: boolean
+	viewport?: { width: number; height: number }
+	waitUntil?: "load" | "domcontentloaded" | "networkidle"
+	timeoutMs?: number
+	disableAnimations?: boolean
+}
+
+// ============================================================================
+// Scenes
+// ============================================================================
+
+/**
+ * Context provided to scene actions.
+ */
+export type SceneActionContext = {
+	page: Page
+	url: string
+	targetId: string
+	sceneName: string
+}
+
+/**
+ * A scene action is a Playwright-driven step that mutates UI state.
+ */
+export type SceneAction = (ctx: SceneActionContext) => Promise<void> | void
+
+/**
+ * Context provided to root factory functions.
+ */
+export type RootsContext = {
+	page: Page
+	url: string
+	targetId: string
+	sceneName: string
+}
+
+/**
+ * A root factory returns one or more Playwright Locators that define scoped regions.
+ */
+export type RootFactory = (ctx: RootsContext) => Locator | Locator[]
+
+/**
+ * A scene describes how to reach a lintable page state.
+ */
+export type Scene = {
+	/** The URL to navigate to. */
+	url: string
+
+	/** Optional per-scene browser environment overrides. */
+	browser?: BrowserOptions
+
+	/** Actions run after initial navigation to set up the desired state. */
+	actions?: SceneAction[]
+
+	/** Root factories that define scoped regions for partial linting. */
+	roots?: RootFactory[]
+}
+
+// ============================================================================
+// Scope (Rule Author APIs)
+// ============================================================================
+
+/**
+ * Browser-side scope available in context.evaluate callbacks.
+ * Provides DOM-oriented helpers for scoped querying.
+ */
+export type BrowserScope = {
+	/** The resolved root elements. */
+	roots: HTMLElement[]
+
+	/** Query within all roots, merge and dedupe results. */
+	queryAll(selector: string): HTMLElement[]
+
+	/** Equivalent to the first match among all roots. */
+	query(selector: string): HTMLElement | null
+}
+
+/**
+ * Node-side scope available on RuleContext.
+ * Provides Playwright Locator-oriented helpers.
+ */
+export type NodeScope = {
+	/** The resolved root locators. */
+	roots: Locator[]
+
+	/** Returns a locator matching `selector` within the scoped roots. */
+	locator(selector: string): Locator
+}
+
+// ============================================================================
+// Targets
+// ============================================================================
+
+/**
+ * A target is what ViewLint lints: either a URL or a named scene.
+ */
+export type Target =
+	| { kind: "url"; id: string; url: string }
+	| { kind: "scene"; id: string; sceneName: string }
+
+// ============================================================================
+// Severity
+// ============================================================================
+
 export type Severity = SeverityName
 
 export type ReportSeverity = Exclude<Severity, "inherit" | "off">
@@ -91,10 +204,23 @@ export type RuleContext<RuleOptions> = {
 	url: string
 	page: Page
 	options: RuleOptions
+
+	/**
+	 * Node-side scope for Playwright-based scoped operations.
+	 * Use this for Playwright actions within scope.
+	 */
+	scope: NodeScope
+
 	report(violation: ViolationReport): void
 
+	/**
+	 * Evaluate a function in browser context with report and scope helpers injected.
+	 */
 	evaluate<R>(
-		fn: (payload: { report: BrowserViolationReporter }) => R | Promise<R>,
+		fn: (payload: {
+			report: BrowserViolationReporter
+			scope: BrowserScope
+		}) => R | Promise<R>,
 	): Promise<R>
 
 	// Mirrors Playwright's `page.evaluate<R, Arg>`: `arg` can be serializable data and/or JSHandles.
@@ -102,18 +228,19 @@ export type RuleContext<RuleOptions> = {
 	evaluate<R, Arg>(
 		fn: (payload: {
 			report: BrowserViolationReporter
+			scope: BrowserScope
 			arg: Unboxed<Arg>
 		}) => R | Promise<R>,
 		arg: Arg,
 	): Promise<R>
 
 	// Playwright also accepts a string expression in place of a function.
-	// Note: When using a string, the `report` helper is not available; call `page.evaluate` if needed.
+	// Note: When using a string, the `report` and `scope` helpers are not available; call `page.evaluate` if needed.
 	evaluate<R>(expression: string): Promise<R>
 	evaluate<R, Arg>(expression: string, arg: Arg): Promise<R>
 
 	// Prefer `context.evaluate` for reporting from within page context.
-	// Use `page.evaluate` directly when you don't need access to `report`.
+	// Use `page.evaluate` directly when you don't need access to `report` or `scope`.
 }
 
 export type RuleDocs = {
@@ -177,6 +304,12 @@ export type RulesConfig = {
 export type ConfigObject<Rules extends RulesConfig = RulesConfig> = {
 	plugins?: Record<string, Plugin>
 	rules?: Partial<Rules>
+
+	/** Global browser environment defaults for all targets. */
+	browser?: BrowserOptions
+
+	/** Named scenes for reaching specific page states. */
+	scenes?: Record<string, Scene>
 }
 
 export type Config<Rules extends RulesConfig = RulesConfig> =
@@ -188,15 +321,8 @@ export type Options = {
 	overrideConfigFile?: string
 	plugins?: Record<string, Plugin>
 
-	browser?: {
-		headless?: boolean
-		viewport?: {
-			width: number
-			height: number
-		}
-		waitUntil?: "load" | "domcontentloaded" | "networkidle"
-		timeoutMs?: number
-		disableAnimations?: boolean
+	debug?: {
+		verbose?: boolean
 	}
 }
 
@@ -214,7 +340,12 @@ export type LintMessage = {
 }
 
 export type LintResult = {
+	/** Stable target identity (scene name or URL). */
+	targetId: string
+
+	/** The final URL navigated to. */
 	url: string
+
 	messages: LintMessage[]
 	suppressedMessages: LintMessage[]
 

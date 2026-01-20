@@ -3,6 +3,7 @@ import fs from "node:fs"
 import {
 	type BrowserContext,
 	chromium,
+	type ElementHandle,
 	type JSHandle,
 	type Locator,
 	type Page,
@@ -10,12 +11,22 @@ import {
 
 import { debug as viewlintDebug } from "./debug.js"
 
-import type { ResolvedOptions } from "./resolveOptions.js"
+import {
+	mergeBrowserOptions,
+	type ResolvedBrowserOptions,
+	type ResolvedOptions,
+} from "./resolveOptions.js"
 import type {
+	BrowserScope,
 	BrowserViolationReporter,
 	LintLocation,
 	LintMessage,
 	LintResult,
+	NodeScope,
+	RootsContext,
+	Scene,
+	SceneActionContext,
+	Target,
 	Unboxed,
 	ViolationReport,
 } from "./types.js"
@@ -56,7 +67,7 @@ function getFinderInitScript(): string {
 	if (cachedFinderInitScript) return cachedFinderInitScript
 
 	const raw = fs.readFileSync(
-		new URL("./vendor/mdev.finder.js", import.meta.url),
+		new URL("./vendor/medv.finder.js", import.meta.url),
 		"utf8",
 	)
 
@@ -70,6 +81,210 @@ function getFinderInitScript(): string {
 })()`
 
 	return cachedFinderInitScript
+}
+
+// ============================================================================
+// Scope Infrastructure
+// ============================================================================
+
+/**
+ * Creates a browser scope handle for use in page.evaluate.
+ * This creates a BrowserScope object in the browser context.
+ */
+async function createBrowserScopeHandle(
+	page: Page,
+	rootHandles: ElementHandle<HTMLElement>[],
+): Promise<JSHandle<BrowserScope>> {
+	return await page.evaluateHandle((roots: HTMLElement[]) => {
+		function queryAll(selector: string): HTMLElement[] {
+			const results: HTMLElement[] = []
+			const seen = new Set<HTMLElement>()
+
+			for (const root of roots) {
+				// Include root itself if it matches
+				if (root.matches && root.matches(selector)) {
+					if (!seen.has(root)) {
+						seen.add(root)
+						results.push(root)
+					}
+				}
+
+				// Query within root
+				const matches = root.querySelectorAll(selector)
+				for (const el of matches) {
+					if (el instanceof HTMLElement && !seen.has(el)) {
+						seen.add(el)
+						results.push(el)
+					}
+				}
+			}
+
+			return results
+		}
+
+		function query(selector: string): HTMLElement | null {
+			for (const root of roots) {
+				if (root.matches && root.matches(selector)) {
+					return root
+				}
+				const match = root.querySelector(selector)
+				if (match instanceof HTMLElement) return match
+			}
+			return null
+		}
+
+		return {
+			roots,
+			queryAll,
+			query,
+		}
+	}, rootHandles)
+}
+
+/**
+ * Resolves roots for a URL target (uses document.body as root).
+ */
+async function resolveUrlTargetRoots(
+	page: Page,
+): Promise<ElementHandle<HTMLElement>[]> {
+	const bodyHandle = await page.evaluateHandle(() => document.body)
+	const body = bodyHandle.asElement()
+	if (!body) {
+		throw new Error("Failed to get document.body element handle")
+	}
+	return [body as ElementHandle<HTMLElement>]
+}
+
+/**
+ * Creates a NodeScope from resolved root locators.
+ */
+function createNodeScope(page: Page, rootLocators: Locator[]): NodeScope {
+	return {
+		roots: rootLocators,
+
+		locator(selector: string): Locator {
+			// Create a union of all matches within roots
+			// For Day 0, we use a simple approach: first matching root
+			if (rootLocators.length === 0) {
+				// Fallback to full page if no roots (shouldn't happen per spec)
+				return page.locator(selector)
+			}
+
+			if (rootLocators.length === 1) {
+				const root = rootLocators[0]
+				if (!root) {
+					return page.locator(selector)
+				}
+				return root.locator(selector)
+			}
+
+			// For multiple roots, use the first root's locator
+			// TODO: In future, could use page.locator with a custom selector engine
+			const firstRoot = rootLocators[0]
+			if (!firstRoot) {
+				return page.locator(selector)
+			}
+			return firstRoot.locator(selector)
+		},
+	}
+}
+
+/**
+ * Resolves scene roots to concrete element handles.
+ * This is called once per prepared page state for determinism.
+ */
+async function resolveSceneRoots(
+	page: Page,
+	scene: Scene,
+	context: RootsContext,
+): Promise<ElementHandle<HTMLElement>[]> {
+	if (!scene.roots || scene.roots.length === 0) {
+		// No roots defined = lint entire page (document.body as root)
+		const bodyHandle = await page.evaluateHandle(() => document.body)
+		const body = bodyHandle.asElement()
+		if (!body) {
+			throw new Error("Failed to get document.body element handle")
+		}
+		return [body as ElementHandle<HTMLElement>]
+	}
+
+	const allLocators: Locator[] = []
+
+	// Evaluate all root factories
+	for (const factory of scene.roots) {
+		const result = factory(context)
+		if (Array.isArray(result)) {
+			allLocators.push(...result)
+		} else {
+			allLocators.push(result)
+		}
+	}
+
+	if (allLocators.length === 0) {
+		throw new Error(
+			`Scene '${context.sceneName}' roots resolved to zero locators. Ensure root factories return valid Locators.`,
+		)
+	}
+
+	// Resolve each locator to element handles
+	const elementHandles: ElementHandle<HTMLElement>[] = []
+	const seen = new Set<string>()
+
+	for (const locator of allLocators) {
+		const count = await locator.count()
+
+		for (let i = 0; i < count; i++) {
+			const handle = await locator.nth(i).elementHandle()
+			if (!handle) continue
+
+			// Dedupe by generating a unique identifier via evaluate
+			const id = await handle.evaluate((el) => {
+				// Use a data attribute or generate one
+				if (!el.hasAttribute("data-viewlint-root-id")) {
+					el.setAttribute(
+						"data-viewlint-root-id",
+						Math.random().toString(36).slice(2),
+					)
+				}
+				return el.getAttribute("data-viewlint-root-id")
+			})
+
+			if (id && !seen.has(id)) {
+				seen.add(id)
+				elementHandles.push(handle as ElementHandle<HTMLElement>)
+			}
+		}
+	}
+
+	if (elementHandles.length === 0) {
+		throw new Error(
+			`Scene '${context.sceneName}' roots resolved to zero elements. Ensure root factories target existing elements.`,
+		)
+	}
+
+	return elementHandles
+}
+
+/**
+ * Converts element handles to locators for NodeScope.
+ * Uses the data-viewlint-root-id attribute set during root resolution.
+ */
+async function elementHandlesToLocators(
+	page: Page,
+	handles: ElementHandle<HTMLElement>[],
+): Promise<Locator[]> {
+	const locators: Locator[] = []
+
+	for (const handle of handles) {
+		const id = await handle.evaluate((el) =>
+			el.getAttribute("data-viewlint-root-id"),
+		)
+		if (id) {
+			locators.push(page.locator(`[data-viewlint-root-id="${id}"]`))
+		}
+	}
+
+	return locators
 }
 
 function getEnabledRuleIds(resolved: ResolvedOptions): string[] {
@@ -257,6 +472,17 @@ export class ViewLintEngine {
 	async lintUrls(urls: string | string[]): Promise<LintResult[]> {
 		const urlList = Array.isArray(urls) ? urls : [urls]
 
+		// Convert URLs to URL targets
+		const targets: Target[] = urlList.map((url) => ({
+			kind: "url" as const,
+			id: url,
+			url,
+		}))
+
+		return this.lintTargets(targets)
+	}
+
+	async lintTargets(targets: Target[]): Promise<LintResult[]> {
 		const enabledRuleIds = getEnabledRuleIds(this.resolved)
 		this.logVerbose(`enabled rules: ${enabledRuleIds.length}`)
 
@@ -271,11 +497,84 @@ export class ViewLintEngine {
 		try {
 			const results: LintResult[] = []
 
-			for (const url of urlList) {
+			for (const target of targets) {
+				const targetId = target.id
+
+				// Resolve the URL and optional scene for this target
+				let url: string
+				let scene: Scene | undefined
+
+				if (target.kind === "url") {
+					url = target.url
+					scene = undefined
+				} else {
+					// Scene target: look up scene from resolved config
+					scene = this.resolved.scenes.get(target.sceneName)
+					if (!scene) {
+						throw new Error(
+							`Unknown scene '${target.sceneName}'. Ensure it is defined in your config.`,
+						)
+					}
+					url = scene.url
+				}
+
+				this.logVerbose(`target:start ${targetId}`)
 				const baseBundle = await this.createPageBundle(context)
 
 				try {
 					await this.setupBrowser(baseBundle.page, url)
+
+					// Run scene actions if this is a scene target
+					if (scene?.actions) {
+						const actionContext: SceneActionContext = {
+							page: baseBundle.page,
+							url,
+							targetId,
+							sceneName: target.kind === "scene" ? target.sceneName : "",
+						}
+
+						for (const action of scene.actions) {
+							this.logVerbose(`action:start ${targetId}`)
+							await action(actionContext)
+							this.logVerbose(`action:finish ${targetId}`)
+						}
+					}
+
+					// Resolve roots for scope
+					this.logVerbose("resolving roots for scope")
+					let baseRootHandles: ElementHandle<HTMLElement>[]
+
+					if (scene?.roots && scene.roots.length > 0) {
+						// Scene with roots: use resolveSceneRoots
+						const rootsContext: RootsContext = {
+							page: baseBundle.page,
+							url,
+							targetId,
+							sceneName: target.kind === "scene" ? target.sceneName : "",
+						}
+						baseRootHandles = await resolveSceneRoots(
+							baseBundle.page,
+							scene,
+							rootsContext,
+						)
+					} else {
+						// URL target or scene without roots: use document.body
+						baseRootHandles = await resolveUrlTargetRoots(baseBundle.page)
+					}
+
+					const baseRootLocators = await elementHandlesToLocators(
+						baseBundle.page,
+						baseRootHandles,
+					)
+					const baseNodeScope = createNodeScope(
+						baseBundle.page,
+						baseRootLocators,
+					)
+					const baseBrowserScopeHandle = await createBrowserScopeHandle(
+						baseBundle.page,
+						baseRootHandles,
+					)
+					this.logVerbose(`resolved ${baseRootHandles.length} root elements`)
 
 					const messages: LintMessage[] = []
 					const suppressedMessages: LintMessage[] = []
@@ -304,9 +603,64 @@ export class ViewLintEngine {
 							? await this.createPageBundle(context)
 							: currentBundle
 
+						// For side effect rules, re-resolve roots on the new page
+						let activeNodeScope: NodeScope
+						let activeBrowserScopeHandle: JSHandle<BrowserScope>
+
 						if (hasSideEffects) {
 							this.logVerbose(`rule:isolate ${ruleId}`)
 							await this.setupBrowser(activeBundle.page, url)
+
+							// Re-run scene actions for the fresh page
+							if (scene?.actions) {
+								const actionContext: SceneActionContext = {
+									page: activeBundle.page,
+									url,
+									targetId,
+									sceneName: target.kind === "scene" ? target.sceneName : "",
+								}
+
+								for (const action of scene.actions) {
+									await action(actionContext)
+								}
+							}
+
+							// Re-resolve roots for the fresh page
+							let activeRootHandles: ElementHandle<HTMLElement>[]
+
+							if (scene?.roots && scene.roots.length > 0) {
+								const rootsContext: RootsContext = {
+									page: activeBundle.page,
+									url,
+									targetId,
+									sceneName: target.kind === "scene" ? target.sceneName : "",
+								}
+								activeRootHandles = await resolveSceneRoots(
+									activeBundle.page,
+									scene,
+									rootsContext,
+								)
+							} else {
+								activeRootHandles = await resolveUrlTargetRoots(
+									activeBundle.page,
+								)
+							}
+
+							const activeRootLocators = await elementHandlesToLocators(
+								activeBundle.page,
+								activeRootHandles,
+							)
+							activeNodeScope = createNodeScope(
+								activeBundle.page,
+								activeRootLocators,
+							)
+							activeBrowserScopeHandle = await createBrowserScopeHandle(
+								activeBundle.page,
+								activeRootHandles,
+							)
+						} else {
+							activeNodeScope = baseNodeScope
+							activeBrowserScopeHandle = baseBrowserScopeHandle
 						}
 
 						const page = activeBundle.page
@@ -480,15 +834,23 @@ export class ViewLintEngine {
 							})
 						}
 
-						type EvaluateNoArgPayload = { report: BrowserReportFn }
-						type EvaluateNoArgWire = { report: JSHandle<BrowserReportFn> }
+						type EvaluateNoArgPayload = {
+							report: BrowserReportFn
+							scope: BrowserScope
+						}
+						type EvaluateNoArgWire = {
+							report: JSHandle<BrowserReportFn>
+							scope: JSHandle<BrowserScope>
+						}
 
 						type EvaluateWithArgPayload = {
 							report: BrowserReportFn
+							scope: BrowserScope
 							arg: unknown
 						}
 						type EvaluateWithArgWire = {
 							report: JSHandle<BrowserReportFn>
+							scope: JSHandle<BrowserScope>
 							arg: unknown
 						}
 
@@ -497,7 +859,10 @@ export class ViewLintEngine {
 						): Promise<T> {
 							const reportHandle = await prepareReportHandle()
 							try {
-								const wire: EvaluateNoArgWire = { report: reportHandle }
+								const wire: EvaluateNoArgWire = {
+									report: reportHandle,
+									scope: activeBrowserScopeHandle,
+								}
 								return await page.evaluate<T, EvaluateNoArgWire>(fn, wire)
 							} finally {
 								await reportHandle.dispose()
@@ -512,6 +877,7 @@ export class ViewLintEngine {
 							try {
 								const wire: EvaluateWithArgWire = {
 									report: reportHandle,
+									scope: activeBrowserScopeHandle,
 									arg,
 								}
 								return await page.evaluate<T, EvaluateWithArgWire>(fn, wire)
@@ -526,6 +892,7 @@ export class ViewLintEngine {
 						function evaluate<T, Arg>(
 							fn: (payload: {
 								report: BrowserReportFn
+								scope: BrowserScope
 								arg: Unboxed<Arg>
 							}) => T | Promise<T>,
 							arg: Arg,
@@ -538,6 +905,7 @@ export class ViewLintEngine {
 								| [
 										fn: (payload: {
 											report: BrowserReportFn
+											scope: BrowserScope
 											arg: Unboxed<Arg>
 										}) => T | Promise<T>,
 										arg: Arg,
@@ -581,6 +949,7 @@ export class ViewLintEngine {
 								url,
 								page,
 								options: ruleConfig.options,
+								scope: activeNodeScope,
 								report,
 								evaluate,
 							})
@@ -684,6 +1053,7 @@ export class ViewLintEngine {
 					}
 
 					results.push({
+						targetId,
 						url,
 						messages,
 						suppressedMessages,

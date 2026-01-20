@@ -1,15 +1,25 @@
 import type { z } from "zod"
 import { resolveRuleId } from "./helpers.js"
 import type {
+	BrowserOptions,
 	ConfigObject,
 	Options,
 	Plugin,
 	RuleConfig,
 	RuleDefinition,
 	RuleSchema,
+	Scene,
 	Severity,
 } from "./types.js"
 
+// ============================================================================
+// Browser Options Resolution
+// ============================================================================
+
+/**
+ * Fully resolved browser options with all fields required.
+ * This represents the final merged state after layering defaults < config < scene overrides.
+ */
 export type ResolvedBrowserOptions = {
 	headless: boolean
 	viewport: {
@@ -32,20 +42,62 @@ export const defaultBrowserOptions: ResolvedBrowserOptions = {
 	disableAnimations: false,
 }
 
-function resolveBrowserOptions(
-	override: Options["browser"],
+/**
+ * Merges browser options layers: defaults < base < override.
+ * Used for both global config resolution and per-target scene merging.
+ */
+export function mergeBrowserOptions(
+	base: BrowserOptions | undefined,
+	override: BrowserOptions | undefined,
 ): ResolvedBrowserOptions {
-	if (!override) return defaultBrowserOptions
-
-	return {
-		headless: override.headless ?? defaultBrowserOptions.headless,
-		viewport: override.viewport ?? defaultBrowserOptions.viewport,
-		waitUntil: override.waitUntil ?? defaultBrowserOptions.waitUntil,
-		timeoutMs: override.timeoutMs ?? defaultBrowserOptions.timeoutMs,
-		disableAnimations:
-			override.disableAnimations ?? defaultBrowserOptions.disableAnimations,
+	const merged: ResolvedBrowserOptions = {
+		headless: defaultBrowserOptions.headless,
+		viewport: defaultBrowserOptions.viewport,
+		waitUntil: defaultBrowserOptions.waitUntil,
+		timeoutMs: defaultBrowserOptions.timeoutMs,
+		disableAnimations: defaultBrowserOptions.disableAnimations,
 	}
+
+	// Apply base layer
+	if (base) {
+		if (base.headless !== undefined) merged.headless = base.headless
+		if (base.viewport !== undefined) merged.viewport = base.viewport
+		if (base.waitUntil !== undefined) merged.waitUntil = base.waitUntil
+		if (base.timeoutMs !== undefined) merged.timeoutMs = base.timeoutMs
+		if (base.disableAnimations !== undefined)
+			merged.disableAnimations = base.disableAnimations
+	}
+
+	// Apply override layer
+	if (override) {
+		if (override.headless !== undefined) merged.headless = override.headless
+		if (override.viewport !== undefined) merged.viewport = override.viewport
+		if (override.waitUntil !== undefined) merged.waitUntil = override.waitUntil
+		if (override.timeoutMs !== undefined) merged.timeoutMs = override.timeoutMs
+		if (override.disableAnimations !== undefined)
+			merged.disableAnimations = override.disableAnimations
+	}
+
+	return merged
 }
+
+// ============================================================================
+// Scene Name Validation
+// ============================================================================
+
+/**
+ * Scene names must be lowercase alphanumeric with dashes.
+ * This minimizes ambiguity with future parameterization and makes CLI UX predictable.
+ */
+const SCENE_NAME_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/
+
+export function isValidSceneName(name: string): boolean {
+	return SCENE_NAME_PATTERN.test(name)
+}
+
+// ============================================================================
+// Resolved Options
+// ============================================================================
 
 export type NormalizedRuleConfig = {
 	severity: Exclude<Severity, "inherit">
@@ -56,7 +108,12 @@ export type ResolvedOptions = {
 	plugins: Map<string, Plugin>
 	ruleRegistry: Map<string, RuleDefinition>
 	rules: Map<string, NormalizedRuleConfig>
+
+	/** Global browser options resolved from config layers. */
 	browser: ResolvedBrowserOptions
+
+	/** Scenes collected from config layers. Later configs override earlier ones. */
+	scenes: Map<string, Scene>
 }
 
 function getErrorMessage(error: unknown): string {
@@ -90,6 +147,10 @@ export function resolveOptions(options: Options): ResolvedOptions {
 	]
 
 	const plugins = new Map<string, Plugin>()
+	const scenes = new Map<string, Scene>()
+
+	// Accumulated browser options from config layers (later layers override earlier)
+	let accumulatedBrowserOptions: BrowserOptions | undefined
 
 	if (options.plugins) {
 		for (const [pluginNamespace, plugin] of Object.entries(options.plugins)) {
@@ -105,12 +166,14 @@ export function resolveOptions(options: Options): ResolvedOptions {
 	const ruleEvents: RuleEvent[] = []
 
 	for (const config of configItems) {
+		// Collect plugins
 		if (config.plugins) {
 			for (const [pluginNamespace, plugin] of Object.entries(config.plugins)) {
 				plugins.set(pluginNamespace, plugin)
 			}
 		}
 
+		// Collect rules
 		if (config.rules) {
 			for (const [ruleId, setting] of Object.entries(config.rules)) {
 				if (setting === undefined) {
@@ -119,6 +182,26 @@ export function resolveOptions(options: Options): ResolvedOptions {
 					)
 				}
 				ruleEvents.push({ ruleId, setting })
+			}
+		}
+
+		// Collect browser options (layer on top of previous)
+		if (config.browser) {
+			accumulatedBrowserOptions = {
+				...accumulatedBrowserOptions,
+				...config.browser,
+			}
+		}
+
+		// Collect scenes (later configs override earlier)
+		if (config.scenes) {
+			for (const [sceneName, scene] of Object.entries(config.scenes)) {
+				if (!isValidSceneName(sceneName)) {
+					throw new Error(
+						`Invalid scene name '${sceneName}'. Scene names must be lowercase alphanumeric with dashes (e.g., 'logged-in-home', 'mobile-view').`,
+					)
+				}
+				scenes.set(sceneName, scene)
 			}
 		}
 	}
@@ -271,6 +354,7 @@ export function resolveOptions(options: Options): ResolvedOptions {
 		plugins,
 		ruleRegistry,
 		rules,
-		browser: resolveBrowserOptions(options.browser),
+		browser: mergeBrowserOptions(undefined, accumulatedBrowserOptions),
+		scenes,
 	}
 }
