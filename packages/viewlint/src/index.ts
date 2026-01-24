@@ -76,4 +76,4 @@ export class ViewLint {
 }
 
 export * from "./types.js"
-export { defaultView, defineViewFromActions as defineView } from "./views.js"
+export { defaultView, defineViewFromActions } from "./views.js"
