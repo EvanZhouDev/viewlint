@@ -20,7 +20,8 @@ export default defineRule({
 		const domHelpers = await getDomHelpersHandle(context.page)
 		await context.evaluate(
 			({ report, scope, args: { domHelpers } }) => {
-				const HORIZONTAL_OVERFLOW_THRESHOLD = 0
+				const HORIZONTAL_OVERFLOW_THRESHOLD = 1
+				const VERTICAL_OVERFLOW_RATIO = 0.5
 
 				const hasSize = (el: HTMLElement): boolean => {
 					return domHelpers.hasElementRectSize(el)
@@ -34,6 +35,7 @@ export default defineRule({
 				const getOverflow = (
 					containerRect: DOMRect,
 					textRect: DOMRect,
+					verticalThreshold: number,
 				): {
 					top: number
 					right: number
@@ -46,22 +48,33 @@ export default defineRule({
 					const left = Math.max(0, containerRect.left - textRect.left)
 
 					const hasOverflow =
+						top > verticalThreshold ||
 						right > HORIZONTAL_OVERFLOW_THRESHOLD ||
+						bottom > verticalThreshold ||
 						left > HORIZONTAL_OVERFLOW_THRESHOLD
 
 					return hasOverflow ? { top, right, bottom, left } : null
 				}
 
-				const formatOverflow = (overflow: {
-					top: number
-					right: number
-					bottom: number
-					left: number
-				}): string => {
+				const formatOverflow = (
+					overflow: {
+						top: number
+						right: number
+						bottom: number
+						left: number
+					},
+					verticalThreshold: number,
+				): string => {
 					const parts: string[] = []
 
+					if (overflow.top > verticalThreshold) {
+						parts.push(`${Math.round(overflow.top)}px top`)
+					}
 					if (overflow.right > HORIZONTAL_OVERFLOW_THRESHOLD) {
 						parts.push(`${Math.round(overflow.right)}px right`)
+					}
+					if (overflow.bottom > verticalThreshold) {
+						parts.push(`${Math.round(overflow.bottom)}px bottom`)
 					}
 					if (overflow.left > HORIZONTAL_OVERFLOW_THRESHOLD) {
 						parts.push(`${Math.round(overflow.left)}px left`)
@@ -87,7 +100,17 @@ export default defineRule({
 						const textRect = domHelpers.getTextNodeBounds(textNode)
 						if (!textRect) continue
 
-						const overflow = getOverflow(containerRect, textRect)
+						const style = window.getComputedStyle(el)
+						const fontSize = Number.parseFloat(style.fontSize)
+						const verticalThreshold = Number.isFinite(fontSize)
+							? fontSize * VERTICAL_OVERFLOW_RATIO
+							: 0
+
+						const overflow = getOverflow(
+							containerRect,
+							textRect,
+							verticalThreshold,
+						)
 						if (!overflow) continue
 
 						const textPreview =
@@ -95,7 +118,10 @@ export default defineRule({
 							((textNode.textContent || "").length > 30 ? "..." : "")
 
 						report({
-							message: `Text "${textPreview}" overflows container by ${formatOverflow(overflow)}`,
+							message: `Text "${textPreview}" overflows container by ${formatOverflow(
+								overflow,
+								verticalThreshold,
+							)}`,
 							element: el,
 						})
 
