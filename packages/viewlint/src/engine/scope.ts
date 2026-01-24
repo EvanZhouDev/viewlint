@@ -1,7 +1,6 @@
 import type { ElementHandle, JSHandle, Locator, Page } from "playwright"
-
-import type { BrowserScope, NodeScope, Scope, SetupOpts } from "../types.js"
 import { toArray } from "../helpers.js"
+import type { BrowserScope, NodeScope, Scope, SetupOpts } from "../types.js"
 
 export type ResolvedRuleScope = {
 	rootHandles: ElementHandle<Node>[]
@@ -80,22 +79,24 @@ function createNodeScope(page: Page, rootLocators: Locator[]): NodeScope {
 }
 
 async function ensureRootId(handle: ElementHandle<Node>): Promise<string> {
-	const id = await handle.evaluate((node) => {
+	const id = await handle.evaluate((node, ROOT_ID_ATTR) => {
 		if (!(node instanceof Element)) {
 			throw new Error("Expected scope root to be an Element")
 		}
 
-		let existing = node.getAttribute(ROOT_ID_ATTR)
+		const attr = ROOT_ID_ATTR
+
+		let existing = node.getAttribute(attr)
 		if (!existing) {
-			existing = crypto.randomUUID()
-			node.setAttribute(ROOT_ID_ATTR, existing)
+			existing = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+			node.setAttribute(attr, existing)
 		}
 		return existing
-	})
+	}, ROOT_ID_ATTR)
 
 	if (!id) {
 		throw new Error(
-			"viewlint internal error: expected data-viewlint-root-id to be set",
+			`viewlint internal error: expected ${ROOT_ID_ATTR} to be set`,
 		)
 	}
 
@@ -177,10 +178,10 @@ export async function resolveRuleScope(args: {
 
 	const rootLocators: Locator[] = []
 	for (const handle of rootHandles) {
-		const id = await handle.evaluate((node) => {
+		const id = await handle.evaluate((node, ROOT_ID_ATTR) => {
 			if (!(node instanceof Element)) return null
 			return node.getAttribute(ROOT_ID_ATTR)
-		})
+		}, ROOT_ID_ATTR)
 		if (!id) continue
 		rootLocators.push(args.page.locator(`[${ROOT_ID_ATTR}="${id}"]`))
 	}
