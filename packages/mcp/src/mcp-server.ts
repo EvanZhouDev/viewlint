@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import type { LintResult } from "viewlint"
-import { ViewLint } from "viewlint"
+import { defaultView, ViewLint } from "viewlint"
 
 import type { LintUrlsInput } from "./types.js"
 import { lintUrlsInputSchema } from "./types.js"
@@ -49,7 +49,14 @@ mcpServer.registerTool(
 		const viewlint = new ViewLint({
 			overrideConfigFile: configFile,
 		})
-		const results = await viewlint.lintUrls(urls)
+		const results = await viewlint.lintTargets(
+			urls.map((url) => {
+				return {
+					view: defaultView,
+					options: [{ context: { baseURL: url } }],
+				}
+			}),
+		)
 
 		return {
 			content: formatToolResults(results),

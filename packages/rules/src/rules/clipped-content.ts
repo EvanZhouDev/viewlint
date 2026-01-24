@@ -21,14 +21,14 @@ export default defineRule({
 		const domHelpers = await getDomHelpersHandle(context.page)
 
 		await context.evaluate(
-			({ report, arg: { domHelpers } }) => {
+			({ report, scope, args: { domHelpers } }) => {
 				const CLIP_THRESHOLD = 1
 
 				const isClippingOverflow = (value: string): boolean => {
 					return value === "hidden" || value === "clip"
 				}
 
-				const allElements = document.querySelectorAll("*")
+				const allElements = scope.queryAll("*")
 
 				for (const el of allElements) {
 					if (!domHelpers.isHtmlElement(el)) continue

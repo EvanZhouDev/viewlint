@@ -7,45 +7,11 @@ import type {
 	RuleConfig,
 	RuleDefinition,
 	RuleSchema,
+	Scope,
+	SetupOpts,
 	Severity,
+	View,
 } from "./types.js"
-
-export type ResolvedBrowserOptions = {
-	headless: boolean
-	viewport: {
-		width: number
-		height: number
-	}
-	waitUntil: "load" | "domcontentloaded" | "networkidle"
-	timeoutMs: number
-	disableAnimations: boolean
-}
-
-export const defaultBrowserOptions: ResolvedBrowserOptions = {
-	headless: true,
-	viewport: {
-		width: 1280,
-		height: 720,
-	},
-	waitUntil: "networkidle",
-	timeoutMs: 30_000,
-	disableAnimations: false,
-}
-
-function resolveBrowserOptions(
-	override: Options["browser"],
-): ResolvedBrowserOptions {
-	if (!override) return defaultBrowserOptions
-
-	return {
-		headless: override.headless ?? defaultBrowserOptions.headless,
-		viewport: override.viewport ?? defaultBrowserOptions.viewport,
-		waitUntil: override.waitUntil ?? defaultBrowserOptions.waitUntil,
-		timeoutMs: override.timeoutMs ?? defaultBrowserOptions.timeoutMs,
-		disableAnimations:
-			override.disableAnimations ?? defaultBrowserOptions.disableAnimations,
-	}
-}
 
 export type NormalizedRuleConfig = {
 	severity: Exclude<Severity, "inherit">
@@ -56,7 +22,10 @@ export type ResolvedOptions = {
 	plugins: Map<string, Plugin>
 	ruleRegistry: Map<string, RuleDefinition>
 	rules: Map<string, NormalizedRuleConfig>
-	browser: ResolvedBrowserOptions
+
+	optionsRegistry: Map<string, SetupOpts | SetupOpts[]>
+	viewRegistry: Map<string, View>
+	scopeRegistry: Map<string, Scope | Scope[]>
 }
 
 function getErrorMessage(error: unknown): string {
@@ -90,6 +59,9 @@ export function resolveOptions(options: Options): ResolvedOptions {
 	]
 
 	const plugins = new Map<string, Plugin>()
+	const optionsRegistry = new Map<string, SetupOpts | SetupOpts[]>()
+	const viewRegistry = new Map<string, View>()
+	const scopeRegistry = new Map<string, Scope | Scope[]>()
 
 	if (options.plugins) {
 		for (const [pluginNamespace, plugin] of Object.entries(options.plugins)) {
@@ -119,6 +91,24 @@ export function resolveOptions(options: Options): ResolvedOptions {
 					)
 				}
 				ruleEvents.push({ ruleId, setting })
+			}
+		}
+
+		if (config.options) {
+			for (const [name, value] of Object.entries(config.options)) {
+				optionsRegistry.set(name, value)
+			}
+		}
+
+		if (config.views) {
+			for (const [name, value] of Object.entries(config.views)) {
+				viewRegistry.set(name, value)
+			}
+		}
+
+		if (config.scopes) {
+			for (const [name, value] of Object.entries(config.scopes)) {
+				scopeRegistry.set(name, value)
 			}
 		}
 	}
@@ -271,6 +261,8 @@ export function resolveOptions(options: Options): ResolvedOptions {
 		plugins,
 		ruleRegistry,
 		rules,
-		browser: resolveBrowserOptions(options.browser),
+		optionsRegistry,
+		viewRegistry,
+		scopeRegistry,
 	}
 }

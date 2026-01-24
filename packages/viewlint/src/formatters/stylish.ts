@@ -1,10 +1,12 @@
 import chalk from "chalk"
-
+import { toArray } from "../helpers.js"
+import { concatSetupOptsLayers, mergeSetupOptsLayers } from "../setupOpts.js"
 import type {
 	ElementDescriptor,
 	LintMessage,
 	LintResult,
 	ReportSeverity,
+	Target,
 } from "../types.js"
 
 const SEVERITY_SORT_WEIGHT: Record<ReportSeverity, number> = {
@@ -127,6 +129,131 @@ function formatSummaryLine(counts: {
 	return highest ? colorForSeverity(highest)(summary) : summary
 }
 
+type TargetInfo = {
+	viewName?: string
+	optionNames: string[]
+	scopeNames: string[]
+	optionCount: number
+	scopeCount: number
+	baseURL?: string
+}
+
+const collectNames = (
+	values: Array<{ meta?: { name?: string } }>,
+): string[] => {
+	const names = values
+		.map((value) => value.meta?.name)
+		.filter((name): name is string => Boolean(name))
+	return [...new Set(names)]
+}
+
+const resolveBaseURL = (target?: Target): string | undefined => {
+	if (!target) return undefined
+	const layers = concatSetupOptsLayers(toArray(target.options))
+	if (layers.length === 0) return undefined
+	return mergeSetupOptsLayers(layers).context?.baseURL
+}
+
+function getTargetInfo(result: LintResult): TargetInfo {
+	const target = result.target
+	if (!target) {
+		return {
+			optionNames: [],
+			scopeNames: [],
+			optionCount: 0,
+			scopeCount: 0,
+		}
+	}
+
+	const options = toArray(target.options)
+	const scopes = toArray(target.scope)
+
+	return {
+		viewName: target.view.meta?.name,
+		optionNames: collectNames(options),
+		scopeNames: collectNames(scopes),
+		optionCount: options.length,
+		scopeCount: scopes.length,
+		baseURL: resolveBaseURL(target),
+	}
+}
+
+function collectTargetDetails(info: TargetInfo): string[] {
+	const details: string[] = []
+	const hasNamed = info.optionNames.length > 0 || info.scopeNames.length > 0
+	if (!hasNamed) return details
+
+	const scopeUnnamedCount = info.scopeCount - info.scopeNames.length
+	if (info.scopeCount > 0) {
+		const scopeNameText = info.scopeNames.join(", ")
+		const suffix =
+			scopeUnnamedCount > 0 ? ` (+${scopeUnnamedCount} unnamed)` : ""
+		const value = scopeNameText.length > 0 ? ` ${scopeNameText}` : ""
+		details.push(` scopes:${value}${suffix}`.trim())
+	}
+
+	const optionUnnamedCount = info.optionCount - info.optionNames.length
+	if (info.optionCount > 0) {
+		const optionNameText = info.optionNames.join(", ")
+		const suffix =
+			optionUnnamedCount > 0 ? ` (+${optionUnnamedCount} unnamed)` : ""
+		const value = optionNameText.length > 0 ? ` ${optionNameText}` : ""
+		details.push(` options:${value}${suffix}`.trim())
+	}
+
+	return details
+}
+
+function formatTargetHeader(result: LintResult, info: TargetInfo): string {
+	const baseLabel = info.baseURL ?? result.url
+	const hasNamed = info.optionNames.length > 0 || info.scopeNames.length > 0
+	const optionUnnamedCount = info.optionCount - info.optionNames.length
+	const scopeUnnamedCount = info.scopeCount - info.scopeNames.length
+	const hasOnlyUnnamed =
+		!hasNamed && (optionUnnamedCount > 0 || scopeUnnamedCount > 0)
+
+	// if there is a view name
+	if (info.viewName) {
+		const viewLabel = info.baseURL
+			? `${info.viewName} ${chalk.gray(`(${info.baseURL})`)}`
+			: info.viewName
+		if (!hasOnlyUnnamed) return viewLabel
+		
+		// if there aren't any named options/scopes just show their counts inline
+		const countParts: string[] = []
+		if (optionUnnamedCount > 0) {
+			countParts.push(
+				`${optionUnnamedCount} option${optionUnnamedCount === 1 ? "" : "s"}`,
+			)
+		}
+		if (scopeUnnamedCount > 0) {
+			countParts.push(
+				`${scopeUnnamedCount} scope${scopeUnnamedCount === 1 ? "" : "s"}`,
+			)
+		}
+		return `${viewLabel} ${chalk.gray(`(${countParts.join(", ")})`)}`
+	}
+
+	// if there isn't a view name
+	const countParts: string[] = []
+	// if there aren't any named options/scopes just show their counts inline
+	if (hasOnlyUnnamed) {
+		if (optionUnnamedCount > 0) {
+			countParts.push(
+				`${optionUnnamedCount} option${optionUnnamedCount === 1 ? "" : "s"}`,
+			)
+		}
+		if (scopeUnnamedCount > 0) {
+			countParts.push(
+				`${scopeUnnamedCount} scope${scopeUnnamedCount === 1 ? "" : "s"}`,
+			)
+		}
+		return `${baseLabel} ${chalk.gray(`(${countParts.join(", ")})`)}`
+	}
+
+	return baseLabel
+}
+
 export function formatStylish(results: LintResult[]): string {
 	const lines: string[] = []
 
@@ -135,7 +262,17 @@ export function formatStylish(results: LintResult[]): string {
 	let infoCount = 0
 
 	for (const result of results) {
-		lines.push(chalk.underline(result.url))
+		const targetInfo = getTargetInfo(result)
+		const header = formatTargetHeader(result, targetInfo)
+		lines.push(chalk.underline(header))
+
+		const details = collectTargetDetails(targetInfo)
+		if (details.length > 0) {
+			for (const detail of details) {
+				lines.push(chalk.gray(`- ${detail}`))
+			}
+		}
+		lines.push("")
 
 		const sorted = sortMessages(result.messages)
 		for (const msg of sorted) {

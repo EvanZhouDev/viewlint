@@ -22,7 +22,7 @@ export default defineRule({
 		const domHelpers = await getDomHelpersHandle(context.page)
 
 		await context.evaluate(
-			({ report, arg: { domHelpers } }) => {
+			({ report, scope, args: { domHelpers } }) => {
 				// 2 lines minimum - detect widows (short last line)
 				const MIN_LINES = 2
 				// Orphan/widow threshold for the LAST line
@@ -132,7 +132,7 @@ export default defineRule({
 					return null
 				}
 
-				const allElements = document.querySelectorAll("*")
+				const allElements = scope.queryAll("*")
 
 				for (const el of allElements) {
 					if (!domHelpers.isHtmlElement(el)) continue

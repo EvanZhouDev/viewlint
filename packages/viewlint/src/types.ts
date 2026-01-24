@@ -1,8 +1,13 @@
-import type { ElementHandle, JSHandle, Locator, Page } from "playwright"
+import type {
+	BrowserContextOptions,
+	ElementHandle,
+	JSHandle,
+	Locator,
+	Page,
+} from "playwright"
 import type { z } from "zod"
 
-// Playwright's `Unboxed<T>` is not publicly exported via package exports.
-// We mirror it here so `context.evaluate` can type args like Playwright `page.evaluate<R, Arg>`.
+// Playwright Types (Not exposed directly, so we recreate them here)
 
 type NoHandles<Arg> = Arg extends JSHandle
 	? never
@@ -31,11 +36,82 @@ export type Unboxed<Arg> =
 										? { [Key in keyof Arg]: Unboxed<Arg[Key]> }
 										: Arg
 
+// View Model
+
+export type NamedMeta = {
+	name?: string
+}
+
+export type SetupOpts<
+	TArgs extends Record<string, unknown> = Record<string, unknown>,
+> = {
+	meta?: NamedMeta
+	/** BrowserContext options (e.g. baseURL, viewport, storageState). */
+	context?: BrowserContextOptions
+
+	/** Arbitrary user payload available to Views/Scopes. */
+	args?: TArgs
+}
+
+export type View<
+	TArgs extends Record<string, unknown> = Record<string, unknown>,
+> = {
+	meta?: NamedMeta
+	setup: (opts?: SetupOpts<TArgs>) => Promise<ViewInstance>
+}
+
+export type ViewInstance = {
+	page: Page
+	reset(): Promise<void>
+	close(): Promise<void>
+}
+
+export type ScopeContext<
+	TArgs extends Record<string, unknown> = Record<string, unknown>,
+> = {
+	page: Page
+	opts: SetupOpts<TArgs>
+}
+
+export type Scope<
+	TArgs extends Record<string, unknown> = Record<string, unknown>,
+> = {
+	meta?: NamedMeta
+	getLocator: (
+		ctx: ScopeContext<TArgs>,
+	) => Promise<Locator | Locator[]> | Locator | Locator[]
+}
+
+export type Target<
+	TArgs extends Record<string, unknown> = Record<string, unknown>,
+> = {
+	view: View<TArgs>
+	options?: SetupOpts<TArgs> | SetupOpts<TArgs>[]
+	scope?: Scope<TArgs> | Scope<TArgs>[]
+}
+
+// Scope Helpers
+
+export type BrowserScope = {
+	roots: Element[]
+	queryAll(selector: string): Element[]
+	query(selector: string): Element | null
+}
+
+export type NodeScope = {
+	roots: Locator[]
+	locator(selector: string): Locator
+}
+
+// Severity
+
 export type Severity = SeverityName
 
 export type ReportSeverity = Exclude<Severity, "inherit" | "off">
 
 type SeverityName = "inherit" | "off" | "info" | "warn" | "error"
+
+// Rule Definition Helpers
 
 export type ElementDescriptor = {
 	selector: string
@@ -91,29 +167,31 @@ export type RuleContext<RuleOptions> = {
 	url: string
 	page: Page
 	options: RuleOptions
+
+	// Node-side scope references
+	scope: NodeScope
 	report(violation: ViolationReport): void
 
+	// Allows access to browser-side reporting
+	// NOTE:
+	// Prefer `context.evaluate` for reporting from within page context.
+	// Use `page.evaluate` directly when you don't need access to `report` or `scope`.
 	evaluate<R>(
-		fn: (payload: { report: BrowserViolationReporter }) => R | Promise<R>,
+		fn: (payload: {
+			report: BrowserViolationReporter
+			scope: BrowserScope
+		}) => R | Promise<R>,
 	): Promise<R>
-
-	// Mirrors Playwright's `page.evaluate<R, Arg>`: `arg` can be serializable data and/or JSHandles.
-	// Inside the page context it is unboxed (ElementHandle/JSHandle -> underlying value), like Playwright.
 	evaluate<R, Arg>(
 		fn: (payload: {
 			report: BrowserViolationReporter
-			arg: Unboxed<Arg>
+			scope: BrowserScope
+			args: Unboxed<Arg>
 		}) => R | Promise<R>,
-		arg: Arg,
+		args: Arg,
 	): Promise<R>
-
-	// Playwright also accepts a string expression in place of a function.
-	// Note: When using a string, the `report` helper is not available; call `page.evaluate` if needed.
 	evaluate<R>(expression: string): Promise<R>
-	evaluate<R, Arg>(expression: string, arg: Arg): Promise<R>
-
-	// Prefer `context.evaluate` for reporting from within page context.
-	// Use `page.evaluate` directly when you don't need access to `report`.
+	evaluate<R, Arg>(expression: string, args: Arg): Promise<R>
 }
 
 export type RuleDocs = {
@@ -175,8 +253,20 @@ export type RulesConfig = {
 }
 
 export type ConfigObject<Rules extends RulesConfig = RulesConfig> = {
+	// List of plugins to use
 	plugins?: Record<string, Plugin>
+
+	// List of rules to lint with
 	rules?: Partial<Rules>
+
+	// Named option layers for Targets.
+	options?: Record<string, SetupOpts | SetupOpts[]>
+
+	// Named Views for Targets.
+	views?: Record<string, View>
+
+	// Named scopes for Targets.
+	scopes?: Record<string, Scope | Scope[]>
 }
 
 export type Config<Rules extends RulesConfig = RulesConfig> =
@@ -187,17 +277,6 @@ export type Options = {
 	overrideConfig?: Config | Config[]
 	overrideConfigFile?: string
 	plugins?: Record<string, Plugin>
-
-	browser?: {
-		headless?: boolean
-		viewport?: {
-			width: number
-			height: number
-		}
-		waitUntil?: "load" | "domcontentloaded" | "networkidle"
-		timeoutMs?: number
-		disableAnimations?: boolean
-	}
 }
 
 export type LintRelation = {
@@ -215,6 +294,7 @@ export type LintMessage = {
 
 export type LintResult = {
 	url: string
+	target?: Target
 	messages: LintMessage[]
 	suppressedMessages: LintMessage[]
 

@@ -2,9 +2,19 @@ import fs from "node:fs/promises"
 import path from "node:path"
 
 import { Command, InvalidArgumentError } from "commander"
-
+import type { Page } from "playwright"
+import { isRecord, toArray } from "./helpers.js"
 import { ViewLint } from "./index.js"
-import type { LintMessage, LintResult, LoadedFormatter } from "./types.js"
+import type {
+	LintMessage,
+	LintResult,
+	LoadedFormatter,
+	Scope,
+	SetupOpts,
+	Target,
+	View,
+} from "./types.js"
+import { defaultView } from "../config/views.js"
 
 type CliOptions = {
 	config?: string
@@ -15,6 +25,11 @@ type CliOptions = {
 	// Used for help output; debug wiring is handled in bin/viewlint.ts.
 	verbose: boolean
 
+	view?: string
+	option?: string[]
+	scope?: string[]
+	selector?: string[]
+
 	// Parsed for help text completeness, but handled by the bin entrypoint.
 	init?: boolean
 	mcp?: boolean
@@ -24,10 +39,6 @@ type SeverityCounts = {
 	errorCount: number
 	warningCount: number
 	infoCount: number
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null
 }
 
 function parseIntStrict(raw: string): number {
@@ -146,20 +157,129 @@ function filterResultsForQuietMode(results: LintResult[]): LintResult[] {
 }
 
 async function execute(options: CliOptions, urls: string[]): Promise<number> {
-	if (urls.length === 0) {
-		process.stderr.write(
-			"No URLs provided.\n\nPass one or more URLs, e.g. `viewlint https://example.com`.\n",
-		)
-		return 2
-	}
-
 	const viewlint = new ViewLint({
 		overrideConfigFile: options.config,
 	})
 
+	let targets: Target[]
+	try {
+		const resolved = await viewlint.getResolvedOptions()
+
+		const optionNames = options.option ?? []
+		const scopeNames = options.scope ?? []
+
+		const optionLayersFromRegistry = optionNames.flatMap((name) => {
+			const entry = resolved.optionsRegistry.get(name)
+			if (!entry) {
+				const known = [...resolved.optionsRegistry.keys()].sort()
+				const knownMessage =
+					known.length === 0
+						? "No named options are defined in config."
+						: `Known options: ${known.map((x) => `'${x}'`).join(", ")}.`
+				throw new Error(`Unknown option '${name}'. ${knownMessage}`)
+			}
+			const layers = toArray(entry)
+			return layers.map((layer) => {
+				if (layer.meta?.name) return layer
+
+				// Attempt to give the option a name from the key for better reporting.
+				return {
+					...layer,
+					meta: { ...(layer.meta ?? {}), name },
+				}
+			})
+		})
+
+		const scopesFromRegistry = scopeNames.flatMap((name) => {
+			const entry = resolved.scopeRegistry.get(name)
+			if (!entry) {
+				const known = [...resolved.scopeRegistry.keys()].sort()
+				const knownMessage =
+					known.length === 0
+						? "No named scopes are defined in config."
+						: `Known scopes: ${known.map((x) => `'${x}'`).join(", ")}.`
+				throw new Error(`Unknown scope '${name}'. ${knownMessage}`)
+			}
+			const scopes = toArray(entry)
+			return scopes.map((scope): Scope => {
+				if (scope.meta?.name) return scope
+				
+				// Attempt to give the scope a name from the key for better reporting.
+				return {
+					...scope,
+					meta: { ...(scope.meta ?? {}), name },
+				}
+			})
+		})
+
+		const selectorScopes = (options.selector ?? []).map((selector) => {
+			return {
+				meta: { name: selector },
+				getLocator: ({ page }: { page: Page }) => page.locator(selector),
+			}
+		})
+
+		const resolvedScopes = [...scopesFromRegistry, ...selectorScopes]
+
+		const resolveView = (): View => {
+			if (options.view) {
+				const view = resolved.viewRegistry.get(options.view)
+				if (!view) {
+					const known = [...resolved.viewRegistry.keys()].sort()
+					const knownMessage =
+						known.length === 0
+							? "No named views are defined in config."
+							: `Known views: ${known.map((x) => `'${x}'`).join(", ")}.`
+					throw new Error(`Unknown view '${options.view}'. ${knownMessage}`)
+				}
+				if (view.meta?.name) return view
+				
+				// Attempt to give the view a name from the key for better reporting.
+				return { ...view, meta: { ...(view.meta ?? {}), name: options.view } }
+			}
+
+			return defaultView
+		}
+
+		const compileTarget = (url: string | undefined): Target => {
+			const urlLayer = url
+				? [
+						{
+							context: { baseURL: url },
+						} satisfies SetupOpts,
+					]
+				: []
+
+			return {
+				view: resolveView(),
+				options:
+					urlLayer.length === 0 && optionLayersFromRegistry.length === 0
+						? undefined
+						: [...urlLayer, ...optionLayersFromRegistry],
+				scope: resolvedScopes.length === 0 ? undefined : resolvedScopes,
+			}
+		}
+
+		targets =
+			urls.length > 0
+				? urls.map((url) => compileTarget(url))
+				: [compileTarget(undefined)]
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error)
+		process.stderr.write(`${message}\n`)
+		return 2
+	}
+
+	if (targets.length === 0) {
+		process.stderr.write(
+			"No lint targets resolved. Provide a URL, or provide --option entries that set options.context.baseURL to use the default View.\n",
+		)
+		return 2
+	}
+
 	let results: LintResult[]
 	try {
-		results = await viewlint.lintUrls(urls)
+		results = await viewlint.lintTargets(targets)
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error)
 		process.stderr.write(`${message}\n`)
@@ -215,6 +335,19 @@ export async function runCli(argv: string[]): Promise<number> {
 		.option(
 			"-c, --config <path>",
 			"Use this configuration instead of viewlint.config.ts, viewlint.config.mjs, or viewlint.config.js",
+		)
+
+	program
+		.optionsGroup("Targets:")
+		.option("--view <name>", "Use a named view from config")
+		.option(
+			"--option <name...>",
+			"Apply named option layers from config (in order)",
+		)
+		.option("--scope <name...>", "Apply named scopes from config (in order)")
+		.option(
+			"--selector <css...>",
+			"Use one or more ad-hoc CSS selectors as additional scope roots",
 		)
 
 	program

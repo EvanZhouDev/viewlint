@@ -20,7 +20,7 @@ export default defineRule({
 	async run(context) {
 		const domHelpers = await getDomHelpersHandle(context.page)
 		await context.evaluate(
-			({ report, arg: { domHelpers } }) => {
+			({ report, scope, args: { domHelpers } }) => {
 				void report
 				// Small overflow for containers that clip
 				const OVERFLOW_THRESHOLD = 1
@@ -127,7 +127,7 @@ export default defineRule({
 					return parts.join(", ")
 				}
 
-				const allElements = document.querySelectorAll("*")
+				const allElements = scope.queryAll("*")
 
 				for (const el of allElements) {
 					if (!domHelpers.isHtmlElement(el)) continue
