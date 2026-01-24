@@ -277,7 +277,6 @@ export class ViewLintEngine {
 
 				for (const resolvedViolation of resolvedViolations) {
 					const ignoreTarget = resolvedViolation.location.element.selector
-					
 					// Reference to either suppressedMessages or messages
 					const bucket =
 						ignoreTarget && ignoredSelectors.has(ignoreTarget)

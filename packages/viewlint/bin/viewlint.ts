@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
-import { runCli } from "../src/cli.js"
 import debug from "debug"
+import { runCli } from "../src/cli.js"
 
 const argv = process.argv
 

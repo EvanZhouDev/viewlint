@@ -1,8 +1,8 @@
 import type { Page } from "playwright"
 import { chromium } from "playwright"
 
-import type { SetupOpts, View, ViewInstance } from "./types.js"
 import { toArray } from "./helpers.js"
+import type { SetupOpts, View, ViewInstance } from "./types.js"
 
 export type DefineViewAction = (args: { page: Page }) => Promise<void> | void
 
