@@ -181,7 +181,18 @@ function applyConfig(
 		}
 
 		const { extends: _extends, ...rest } = config
-		if (rest.plugins || rest.rules) {
+		const hasEntries = (value: object | undefined): boolean => {
+			if (!value) return false
+			return Object.keys(value).length > 0
+		}
+
+		if (
+			hasEntries(rest.plugins) ||
+			hasEntries(rest.rules) ||
+			hasEntries(rest.options) ||
+			hasEntries(rest.views) ||
+			hasEntries(rest.scopes)
+		) {
 			state.output.push(rest)
 		}
 	} finally {
