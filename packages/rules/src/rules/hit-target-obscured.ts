@@ -22,7 +22,7 @@ export default defineRule({
 		const domHelpers = await getDomHelpersHandle(context.page)
 
 		await context.evaluate(
-			({ report, arg: { domHelpers } }) => {
+			({ report, scope, args: { domHelpers } }) => {
 				const isInteractive = (el: Element): boolean => {
 					const tagName = el.tagName.toLowerCase()
 					const interactiveTags = [
@@ -128,7 +128,7 @@ export default defineRule({
 					return false
 				}
 
-				const allElements = document.querySelectorAll("*")
+				const allElements = scope.queryAll("*")
 
 				for (const el of allElements) {
 					if (!domHelpers.isHtmlElement(el)) continue

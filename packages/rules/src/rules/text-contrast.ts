@@ -30,8 +30,7 @@ export default defineRule({
 		const domHelpers = await getDomHelpersHandle(context.page)
 
 		const textElements = await context.evaluate(
-			({ arg: { domHelpers } }) => {
-
+			({ scope, args: { domHelpers } }) => {
 				const hasDirectTextContent = (el: HTMLElement): boolean => {
 					return domHelpers.getDirectTextNodes(el).length > 0
 				}
@@ -79,7 +78,7 @@ export default defineRule({
 				}
 
 				const results: TextElementInfo[] = []
-				const allElements = document.querySelectorAll("*")
+				const allElements = scope.queryAll("*")
 
 				for (const el of allElements) {
 					if (!domHelpers.isHtmlElement(el)) continue
@@ -264,12 +263,12 @@ export default defineRule({
 
 			// Report via evaluate to get proper element reference
 			await context.evaluate(
-				({ report, arg }) => {
-					const el = document.querySelector(arg.selector)
+				({ report, args }) => {
+					const el = document.querySelector(args.selector)
 					if (!el || !(el instanceof HTMLElement)) return
 
 					report({
-						message: `Text has low contrast ratio of ${arg.ratioFormatted}:1 (minimum ${arg.minimumRatio}:1). Text color: ${arg.textColorStr}, background: ${arg.bgColorStr}`,
+						message: `Text has low contrast ratio of ${args.ratioFormatted}:1 (minimum ${args.minimumRatio}:1). Text color: ${args.textColorStr}, background: ${args.bgColorStr}`,
 						element: el,
 					})
 				},

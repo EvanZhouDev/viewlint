@@ -20,7 +20,7 @@ export default defineRule({
 		const domHelpers = await getDomHelpersHandle(context.page)
 
 		await context.evaluate(
-			({ report, arg: { domHelpers } }) => {
+			({ report, scope, args: { domHelpers } }) => {
 				const OVERLAP_THRESHOLD = 5
 				const MIN_ELEMENT_SIZE = 50
 
@@ -81,7 +81,7 @@ export default defineRule({
 				type Candidate = { el: HTMLElement; rect: DOMRect; area: number }
 				const candidates: Candidate[] = []
 
-				for (const el of document.querySelectorAll("*")) {
+				for (const el of scope.queryAll("*")) {
 					if (!domHelpers.isHtmlElement(el)) continue
 					if (!isCandidate(el)) continue
 

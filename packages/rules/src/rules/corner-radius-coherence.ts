@@ -25,9 +25,8 @@ export default defineRule({
 		const domHelpers = await getDomHelpersHandle(context.page)
 
 		await context.evaluate(
-			({ report, arg: { domHelpers } }) => {
+			({ report, scope, args: { domHelpers } }) => {
 				const TOLERANCE = 2
-
 
 				const parseRadius = (value: string): number => {
 					const parsed = parseFloat(value)
@@ -139,7 +138,7 @@ export default defineRule({
 					return false
 				}
 
-				const allElements = document.querySelectorAll("*")
+				const allElements = scope.queryAll("*")
 
 				for (const el of allElements) {
 					if (!domHelpers.isHtmlElement(el)) continue
