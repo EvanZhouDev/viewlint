@@ -3,6 +3,7 @@ import path from "node:path"
 import { findNearestViewlintConfigFile } from "./configFile.js"
 import { ViewLintEngine } from "./engine.js"
 import { formatterFromId } from "./formatter.js"
+import { toArray } from "./helpers.js"
 import { loadViewlintConfigFromFile } from "./loadConfigFile.js"
 import type { ResolvedOptions } from "./resolveOptions.js"
 import { resolveOptions } from "./resolveOptions.js"
@@ -12,6 +13,7 @@ import type {
 	LoadedFormatter,
 	Options,
 	RulesConfig,
+	Target,
 } from "./types.js"
 
 export class ViewLint {
@@ -39,16 +41,9 @@ export class ViewLint {
 		const baseConfig = this.#options.baseConfig
 		const overrideConfig = this.#options.overrideConfig
 
-		const toArray = <T>(value: T | T[]): T[] => {
-			if (!value) return []
-			return Array.isArray(value) ? value : [value]
-		}
-
 		const mergedBaseConfig = [
-			...(baseConfig ? toArray<Config<RulesConfig>>(baseConfig) : []),
-			...(discoveredConfig
-				? toArray<Config<RulesConfig>>(discoveredConfig)
-				: []),
+			...toArray<Config<RulesConfig>>(baseConfig),
+			...toArray<Config<RulesConfig>>(discoveredConfig),
 		]
 
 		const merged: Options = {
@@ -62,9 +57,17 @@ export class ViewLint {
 		return this.#engine
 	}
 
-	async lintUrls(urls: string | string[]): Promise<LintResult[]> {
+	async lintTargets(targets: Target[]): Promise<LintResult[]> {
 		const engine = await this.#ensureInitialized()
-		return engine.lintUrls(urls)
+		return engine.lintTargets(targets)
+	}
+
+	async getResolvedOptions(): Promise<ResolvedOptions> {
+		await this.#ensureInitialized()
+		if (!this.#resolved) {
+			throw new Error("viewlint internal error: expected resolved options")
+		}
+		return this.#resolved
 	}
 
 	async loadFormatter(nameOrPath?: string): Promise<LoadedFormatter> {
@@ -73,3 +76,4 @@ export class ViewLint {
 }
 
 export * from "./types.js"
+export { defaultView, defineViewFromActions as defineView } from "./views.js"
