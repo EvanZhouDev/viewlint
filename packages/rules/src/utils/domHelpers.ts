@@ -8,6 +8,7 @@ export type DomHelpers = {
 	isSVGElement: (el: Element | null) => el is SVGElement
 	isRenderableElement: (el: Element | null) => el is HTMLElement | SVGElement
 	isVisible: (el: Element, options?: VisibilityOptions) => boolean
+	isVisibleInViewport: (el: Element, options?: VisibilityOptions) => boolean
 	hasRectSize: (rect: DOMRect, minWidth?: number, minHeight?: number) => boolean
 	hasElementRectSize: (
 		el: Element,
@@ -68,6 +69,23 @@ export const createDomHelpers = (): DomHelpers => {
 			return false
 
 		return true
+	}
+
+	const isVisibleInViewport = (
+		el: Element,
+		options?: VisibilityOptions,
+	): boolean => {
+		if (!isVisible(el, options)) return false
+
+		const rect = el.getBoundingClientRect()
+		if (!hasRectSize(rect, 1, 1)) return false
+
+		return (
+			rect.bottom > 0 &&
+			rect.right > 0 &&
+			rect.top < window.innerHeight &&
+			rect.left < window.innerWidth
+		)
 	}
 
 	const hasRectSize = (rect: DOMRect, minWidth = 1, minHeight = 1): boolean => {
@@ -188,6 +206,7 @@ export const createDomHelpers = (): DomHelpers => {
 		isSVGElement,
 		isRenderableElement,
 		isVisible,
+		isVisibleInViewport,
 		hasRectSize,
 		hasElementRectSize,
 		hasClientSize,
