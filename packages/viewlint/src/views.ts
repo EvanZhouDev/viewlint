@@ -24,14 +24,20 @@ export const defineViewFromActions = (
 			const context = await browser.newContext(opts?.context)
 			const page = await context.newPage()
 
+			const waitForSettled = async (): Promise<void> => {
+				await page.waitForLoadState("networkidle")
+			}
+
 			const runActions = async (): Promise<void> => {
 				for (const action of actions) {
 					await action({ page })
+					await waitForSettled()
 				}
 			}
 
 			const reset = async (): Promise<void> => {
 				await page.goto(baseURL)
+				await waitForSettled()
 				await runActions()
 			}
 
