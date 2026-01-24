@@ -3,12 +3,13 @@ import path from "node:path"
 
 import { Command, InvalidArgumentError } from "commander"
 import type { Page } from "playwright"
-import { isRecord } from "./helpers.js"
+import { isRecord, toArray } from "./helpers.js"
 import { ViewLint } from "./index.js"
 import type {
 	LintMessage,
 	LintResult,
 	LoadedFormatter,
+	Scope,
 	SetupOpts,
 	Target,
 	View,
@@ -177,7 +178,16 @@ async function execute(options: CliOptions, urls: string[]): Promise<number> {
 						: `Known options: ${known.map((x) => `'${x}'`).join(", ")}.`
 				throw new Error(`Unknown option '${name}'. ${knownMessage}`)
 			}
-			return Array.isArray(entry) ? entry : [entry]
+			const layers = toArray(entry)
+			return layers.map((layer) => {
+				if (layer.meta?.name) return layer
+
+				// Attempt to give the option a name from the key for better reporting.
+				return {
+					...layer,
+					meta: { ...(layer.meta ?? {}), name },
+				}
+			})
 		})
 
 		const scopesFromRegistry = scopeNames.flatMap((name) => {
@@ -190,11 +200,21 @@ async function execute(options: CliOptions, urls: string[]): Promise<number> {
 						: `Known scopes: ${known.map((x) => `'${x}'`).join(", ")}.`
 				throw new Error(`Unknown scope '${name}'. ${knownMessage}`)
 			}
-			return Array.isArray(entry) ? entry : [entry]
+			const scopes = toArray(entry)
+			return scopes.map((scope): Scope => {
+				if (scope.meta?.name) return scope
+				
+				// Attempt to give the scope a name from the key for better reporting.
+				return {
+					...scope,
+					meta: { ...(scope.meta ?? {}), name },
+				}
+			})
 		})
 
 		const selectorScopes = (options.selector ?? []).map((selector) => {
 			return {
+				meta: { name: selector },
 				getLocator: ({ page }: { page: Page }) => page.locator(selector),
 			}
 		})
@@ -212,7 +232,10 @@ async function execute(options: CliOptions, urls: string[]): Promise<number> {
 							: `Known views: ${known.map((x) => `'${x}'`).join(", ")}.`
 					throw new Error(`Unknown view '${options.view}'. ${knownMessage}`)
 				}
-				return view
+				if (view.meta?.name) return view
+				
+				// Attempt to give the view a name from the key for better reporting.
+				return { ...view, meta: { ...(view.meta ?? {}), name: options.view } }
 			}
 
 			return defaultView

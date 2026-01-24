@@ -38,9 +38,14 @@ export type Unboxed<Arg> =
 
 // View Model
 
+export type NamedMeta = {
+	name?: string
+}
+
 export type SetupOpts<
 	TArgs extends Record<string, unknown> = Record<string, unknown>,
 > = {
+	meta?: NamedMeta
 	/** BrowserContext options (e.g. baseURL, viewport, storageState). */
 	context?: BrowserContextOptions
 
@@ -51,6 +56,7 @@ export type SetupOpts<
 export type View<
 	TArgs extends Record<string, unknown> = Record<string, unknown>,
 > = {
+	meta?: NamedMeta
 	setup: (opts?: SetupOpts<TArgs>) => Promise<ViewInstance>
 }
 
@@ -70,6 +76,7 @@ export type ScopeContext<
 export type Scope<
 	TArgs extends Record<string, unknown> = Record<string, unknown>,
 > = {
+	meta?: NamedMeta
 	getLocator: (
 		ctx: ScopeContext<TArgs>,
 	) => Promise<Locator | Locator[]> | Locator | Locator[]
@@ -287,6 +294,7 @@ export type LintMessage = {
 
 export type LintResult = {
 	url: string
+	target?: Target
 	messages: LintMessage[]
 	suppressedMessages: LintMessage[]
 

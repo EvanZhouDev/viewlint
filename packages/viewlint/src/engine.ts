@@ -128,6 +128,7 @@ export class ViewLintEngine {
 					viewInstance,
 					setupOpts: mergedSetupOpts,
 					scopes: target.scope,
+					target,
 					results,
 				})
 			} finally {
@@ -143,6 +144,7 @@ export class ViewLintEngine {
 		viewInstance: ViewInstance
 		setupOpts: SetupOpts
 		scopes: Scope | Scope[] | undefined
+		target: Target
 		results: LintResult[]
 	}): Promise<void> {
 		const page = args.viewInstance.page
@@ -322,6 +324,7 @@ export class ViewLintEngine {
 
 			args.results.push({
 				url,
+				target: args.target,
 				messages,
 				suppressedMessages,
 				...computeCounts(messages),
