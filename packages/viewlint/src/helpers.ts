@@ -9,6 +9,37 @@ export function toArray<T>(value: T | T[] | undefined): T[] {
 	return Array.isArray(value) ? value : [value]
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	if (!isRecord(value)) return false
+	if (Array.isArray(value)) return false
+
+	const proto = Object.getPrototypeOf(value)
+	return proto === Object.prototype || proto === null
+}
+
+/**
+ * Deep-merge two values where `undefined` means "no override".
+ *
+ * - Plain objects are merged recursively.
+ * - Arrays and non-plain objects are replaced (override wins).
+ */
+export function deepMerge<T>(base: T, override: T): T {
+	if (!override) return base
+	if (!base) return override
+
+	if (isPlainObject(base) && isPlainObject(override)) {
+		const merged = { ...base }
+		const mergedRecord: Record<string, unknown> = merged
+		for (const [key, overrideValue] of Object.entries(override)) {
+			const baseValue = mergedRecord[key]
+			mergedRecord[key] = deepMerge(baseValue, overrideValue)
+		}
+		return merged
+	}
+
+	return override
+}
+
 function unknownRuleError(
 	ruleId: string,
 	ruleRegistry: Map<string, RuleDefinition>,
@@ -52,8 +83,4 @@ export function resolveRuleId(
 	}
 
 	return ruleId
-}
-
-export function safeCast<T>(value: T): T {
-	return value
 }
