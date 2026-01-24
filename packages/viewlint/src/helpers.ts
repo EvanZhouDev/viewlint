@@ -1,5 +1,14 @@
 import type { RuleDefinition } from "./types.js"
 
+export function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null
+}
+
+export function toArray<T>(value: T | T[] | undefined): T[] {
+	if (typeof value === "undefined") return []
+	return Array.isArray(value) ? value : [value]
+}
+
 function unknownRuleError(
 	ruleId: string,
 	ruleRegistry: Map<string, RuleDefinition>,
