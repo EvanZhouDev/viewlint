@@ -20,7 +20,7 @@ export default defineRule({
 		const domHelpers = await getDomHelpersHandle(context.page)
 		await context.evaluate(
 			({ report, scope, args: { domHelpers } }) => {
-				const OVERFLOW_THRESHOLD = 1
+				const HORIZONTAL_OVERFLOW_THRESHOLD = 0
 
 				const hasSize = (el: HTMLElement): boolean => {
 					return domHelpers.hasElementRectSize(el)
@@ -46,10 +46,8 @@ export default defineRule({
 					const left = Math.max(0, containerRect.left - textRect.left)
 
 					const hasOverflow =
-						top > OVERFLOW_THRESHOLD ||
-						right > OVERFLOW_THRESHOLD ||
-						bottom > OVERFLOW_THRESHOLD ||
-						left > OVERFLOW_THRESHOLD
+						right > HORIZONTAL_OVERFLOW_THRESHOLD ||
+						left > HORIZONTAL_OVERFLOW_THRESHOLD
 
 					return hasOverflow ? { top, right, bottom, left } : null
 				}
@@ -62,16 +60,10 @@ export default defineRule({
 				}): string => {
 					const parts: string[] = []
 
-					if (overflow.top > OVERFLOW_THRESHOLD) {
-						parts.push(`${Math.round(overflow.top)}px top`)
-					}
-					if (overflow.right > OVERFLOW_THRESHOLD) {
+					if (overflow.right > HORIZONTAL_OVERFLOW_THRESHOLD) {
 						parts.push(`${Math.round(overflow.right)}px right`)
 					}
-					if (overflow.bottom > OVERFLOW_THRESHOLD) {
-						parts.push(`${Math.round(overflow.bottom)}px bottom`)
-					}
-					if (overflow.left > OVERFLOW_THRESHOLD) {
+					if (overflow.left > HORIZONTAL_OVERFLOW_THRESHOLD) {
 						parts.push(`${Math.round(overflow.left)}px left`)
 					}
 
