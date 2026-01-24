@@ -220,3 +220,5 @@ export function defineConfig(
 
 	return state.output
 }
+
+export { defaultView, defineViewFromActions } from "./views.js"

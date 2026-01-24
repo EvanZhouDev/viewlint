@@ -1,15 +1,21 @@
 import type { Page } from "playwright"
 import { chromium } from "playwright"
 
-import { toArray } from "./helpers.js"
-import type { SetupOpts, View, ViewInstance } from "./types.js"
+import { toArray } from "../src/helpers.js"
+import type { SetupOpts, View, ViewInstance } from "../src/types.js"
 
 export type DefineViewAction = (args: { page: Page }) => Promise<void> | void
 
 export const defineViewFromActions = (
 	maybeActionArr: DefineViewAction | DefineViewAction[],
+	opts?: {
+		name?: string
+	}
 ): View => {
 	return {
+		meta: {
+			name: opts?.name
+		},
 		setup: async (opts?: SetupOpts): Promise<ViewInstance> => {
 			const actions = toArray(maybeActionArr)
 
@@ -55,4 +61,4 @@ export const defineViewFromActions = (
 	}
 }
 
-export const defaultView: View = defineViewFromActions([])
+export const defaultView: View = defineViewFromActions([], { name: "default" })

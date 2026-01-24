@@ -14,7 +14,7 @@ import type {
 	Target,
 	View,
 } from "./types.js"
-import { defaultView } from "./views.js"
+import { defaultView } from "../config/views.js"
 
 type CliOptions = {
 	config?: string
