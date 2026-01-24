@@ -47,7 +47,8 @@ function normalizeElementDescriptor(element: ElementDescriptor): {
 	selector: string
 } {
 	const tagName = element.tagName.trim()
-	const id = element.id.trim().length ? element.id.trim() : undefined
+	const rawId = typeof element.id === "string" ? element.id : ""
+	const id = rawId.trim().length ? rawId.trim() : undefined
 
 	const classes = element.classes
 		.map((c) => c.trim())
@@ -218,7 +219,7 @@ function formatTargetHeader(result: LintResult, info: TargetInfo): string {
 			? `${info.viewName} ${chalk.gray(`(${info.baseURL})`)}`
 			: info.viewName
 		if (!hasOnlyUnnamed) return viewLabel
-		
+
 		// if there aren't any named options/scopes just show their counts inline
 		const countParts: string[] = []
 		if (optionUnnamedCount > 0) {
