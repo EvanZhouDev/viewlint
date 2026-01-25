@@ -26,6 +26,7 @@ export default defineRule({
 				const OVERFLOW_THRESHOLD = 1
 				// Larger threshold for visible overflow containers (likely intentional small overlaps)
 				const VISIBLE_OVERFLOW_THRESHOLD = 20
+				const NEGATIVE_MARGIN_TOLERANCE = 2
 
 				const isOffscreenPositioned = (el: HTMLElement): boolean => {
 					const style = window.getComputedStyle(el)
@@ -47,6 +48,92 @@ export default defineRule({
 						style.overflow === "visible" &&
 						style.overflowX === "visible" &&
 						style.overflowY === "visible"
+					)
+				}
+
+				const isSymmetricHorizontalOverflow = (
+					overflow: { left: number; right: number },
+					threshold: number,
+				): boolean => {
+					return (
+						overflow.left > threshold &&
+						overflow.right > threshold &&
+						Math.abs(overflow.left - overflow.right) <= 2
+					)
+				}
+
+				const parsePx = (value: string): number => {
+					const parsed = Number.parseFloat(value)
+					return Number.isFinite(parsed) ? parsed : 0
+				}
+
+				const looksLikeNegativeMarginClipping = (
+					child: HTMLElement,
+					parent: HTMLElement,
+					overflow: {
+						top: number
+						right: number
+						bottom: number
+						left: number
+					},
+					threshold: number,
+				): boolean => {
+					const parentStyle = window.getComputedStyle(parent)
+					const clipsX = domHelpers.isClippingOverflowValue(
+						parentStyle.overflowX,
+					)
+					const clipsY = domHelpers.isClippingOverflowValue(
+						parentStyle.overflowY,
+					)
+					if (!clipsX && !clipsY) return false
+
+					const style = window.getComputedStyle(child)
+					const marginLeft = parsePx(style.marginLeft)
+					const marginRight = parsePx(style.marginRight)
+					const marginTop = parsePx(style.marginTop)
+					const marginBottom = parsePx(style.marginBottom)
+
+					const leftMatch =
+						clipsX &&
+						marginLeft < 0 &&
+						overflow.left > threshold &&
+						Math.abs(overflow.left - Math.abs(marginLeft)) <=
+							NEGATIVE_MARGIN_TOLERANCE
+
+					const rightMatch =
+						clipsX &&
+						marginRight < 0 &&
+						overflow.right > threshold &&
+						Math.abs(overflow.right - Math.abs(marginRight)) <=
+							NEGATIVE_MARGIN_TOLERANCE
+
+					const topMatch =
+						clipsY &&
+						marginTop < 0 &&
+						overflow.top > threshold &&
+						Math.abs(overflow.top - Math.abs(marginTop)) <=
+							NEGATIVE_MARGIN_TOLERANCE
+
+					const bottomMatch =
+						clipsY &&
+						marginBottom < 0 &&
+						overflow.bottom > threshold &&
+						Math.abs(overflow.bottom - Math.abs(marginBottom)) <=
+							NEGATIVE_MARGIN_TOLERANCE
+
+					const symmetricMatch =
+						clipsX &&
+						marginLeft < 0 &&
+						marginRight < 0 &&
+						isSymmetricHorizontalOverflow(
+							{ left: overflow.left, right: overflow.right },
+							threshold,
+						) &&
+						Math.abs(Math.abs(marginLeft) - Math.abs(marginRight)) <=
+							NEGATIVE_MARGIN_TOLERANCE
+
+					return (
+						leftMatch || rightMatch || topMatch || bottomMatch || symmetricMatch
 					)
 				}
 
@@ -100,6 +187,61 @@ export default defineRule({
 					return hasOverflow ? { top, right, bottom, left } : null
 				}
 
+				const isClippedByIntentionallyClippedAncestor = (
+					el: HTMLElement,
+					childRect: DOMRect,
+					overflow: {
+						top: number
+						right: number
+						bottom: number
+						left: number
+					},
+					threshold: number,
+				): boolean => {
+					const needsX = overflow.left > threshold || overflow.right > threshold
+					const needsY = overflow.top > threshold || overflow.bottom > threshold
+					if (!needsX && !needsY) return false
+
+					let current: Element | null = el.parentElement
+					while (current) {
+						if (!domHelpers.isHtmlElement(current)) {
+							current = current.parentElement
+							continue
+						}
+
+						const style = window.getComputedStyle(current)
+						const clipsX = domHelpers.isClippingOverflowValue(style.overflowX)
+						const clipsY = domHelpers.isClippingOverflowValue(style.overflowY)
+						const clipsInNeededAxis = (needsX && clipsX) || (needsY && clipsY)
+						if (!clipsInNeededAxis) {
+							current = current.parentElement
+							continue
+						}
+						if (!domHelpers.isIntentionallyClipped(current)) {
+							current = current.parentElement
+							continue
+						}
+
+						const rect = current.getBoundingClientRect()
+
+						const clippedInX =
+							needsX &&
+							clipsX &&
+							(childRect.left < rect.left - threshold ||
+								childRect.right > rect.right + threshold)
+						const clippedInY =
+							needsY &&
+							clipsY &&
+							(childRect.top < rect.top - threshold ||
+								childRect.bottom > rect.bottom + threshold)
+
+						if (clippedInX || clippedInY) return true
+						current = current.parentElement
+					}
+
+					return false
+				}
+
 				const formatOverflow = (
 					overflow: {
 						top: number
@@ -134,8 +276,18 @@ export default defineRule({
 					if (!domHelpers.isVisible(el)) continue
 					if (!domHelpers.hasElementRectSize(el)) continue
 
+					if (domHelpers.hasTextOverflowEllipsis(el)) continue
+
 					// Common intentional pattern: offscreen positioned elements (e.g. skip links)
 					if (isOffscreenPositioned(el)) continue
+
+					const elementStyle = window.getComputedStyle(el)
+					if (
+						elementStyle.position === "absolute" ||
+						elementStyle.position === "fixed" ||
+						elementStyle.position === "sticky"
+					)
+						continue
 
 					const parent = el.parentElement
 					if (!parent || !domHelpers.isHtmlElement(parent)) continue
@@ -145,6 +297,9 @@ export default defineRule({
 
 					// Skip body as parent - content overflowing body is normal for scrollable pages
 					if (parent.tagName === "BODY" || parent.tagName === "HTML") continue
+
+					if (domHelpers.hasTextOverflowEllipsis(parent)) continue
+					if (domHelpers.isIntentionallyClipped(parent)) continue
 
 					const parentRect = parent.getBoundingClientRect()
 					const childRect = el.getBoundingClientRect()
@@ -162,6 +317,16 @@ export default defineRule({
 							VISIBLE_OVERFLOW_THRESHOLD,
 						)
 						if (!overflow) continue
+						if (
+							isClippedByIntentionallyClippedAncestor(
+								el,
+								childRect,
+								overflow,
+								VISIBLE_OVERFLOW_THRESHOLD,
+							)
+						) {
+							continue
+						}
 
 						report({
 							message: `Element overflows its container by ${formatOverflow(overflow, VISIBLE_OVERFLOW_THRESHOLD)}`,
@@ -180,6 +345,27 @@ export default defineRule({
 							OVERFLOW_THRESHOLD,
 						)
 						if (!overflow) continue
+						if (
+							looksLikeNegativeMarginClipping(
+								el,
+								parent,
+								overflow,
+								OVERFLOW_THRESHOLD,
+							)
+						) {
+							continue
+						}
+
+						if (
+							isClippedByIntentionallyClippedAncestor(
+								el,
+								childRect,
+								overflow,
+								OVERFLOW_THRESHOLD,
+							)
+						) {
+							continue
+						}
 
 						report({
 							message: `Element overflows its container by ${formatOverflow(overflow, OVERFLOW_THRESHOLD)}`,
