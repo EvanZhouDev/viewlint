@@ -10,11 +10,11 @@ export const defineViewFromActions = (
 	maybeActionArr: DefineViewAction | DefineViewAction[],
 	opts?: {
 		name?: string
-	}
+	},
 ): View => {
 	return {
 		meta: {
-			name: opts?.name
+			name: opts?.name,
 		},
 		setup: async (opts?: SetupOpts): Promise<ViewInstance> => {
 			const actions = toArray(maybeActionArr)
@@ -31,7 +31,7 @@ export const defineViewFromActions = (
 			const page = await context.newPage()
 
 			const waitForSettled = async (): Promise<void> => {
-				await page.waitForLoadState("networkidle")
+				await page.waitForLoadState("load")
 			}
 
 			const runActions = async (): Promise<void> => {

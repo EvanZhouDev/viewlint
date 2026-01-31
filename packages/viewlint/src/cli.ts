@@ -3,6 +3,7 @@ import path from "node:path"
 
 import { Command, InvalidArgumentError } from "commander"
 import type { Page } from "playwright"
+import { defaultView } from "../config/views.js"
 import { isRecord, toArray } from "./helpers.js"
 import { ViewLint } from "./index.js"
 import type {
@@ -14,7 +15,6 @@ import type {
 	Target,
 	View,
 } from "./types.js"
-import { defaultView } from "../config/views.js"
 
 type CliOptions = {
 	config?: string
@@ -203,7 +203,7 @@ async function execute(options: CliOptions, urls: string[]): Promise<number> {
 			const scopes = toArray(entry)
 			return scopes.map((scope): Scope => {
 				if (scope.meta?.name) return scope
-				
+
 				// Attempt to give the scope a name from the key for better reporting.
 				return {
 					...scope,
@@ -233,7 +233,7 @@ async function execute(options: CliOptions, urls: string[]): Promise<number> {
 					throw new Error(`Unknown view '${options.view}'. ${knownMessage}`)
 				}
 				if (view.meta?.name) return view
-				
+
 				// Attempt to give the view a name from the key for better reporting.
 				return { ...view, meta: { ...(view.meta ?? {}), name: options.view } }
 			}
