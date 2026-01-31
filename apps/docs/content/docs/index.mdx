@@ -14,7 +14,6 @@ Built from the start [for coding agents](#built-for-llms), ViewLint accelerates 
 
 ## The UI Linting Problem
 
-
 In the world of UI, identifying issues with code can only get you so far. Many issues are incredibly difficult if not impossible to catch just by looking at code alone:
 
 - Contents overflowing containers
@@ -38,17 +37,27 @@ As it turns out, it's because coding agents have a closed feedback loop to valid
 With ViewLint, we close the feedback loop with UI design, and allow the agent to get live feedback on the rendered output of the website it is working on. This significantly improves their UI design performance. Compare the same UI created with and without ViewLint by dragging the slider below.
 
 <ImageComparison
-	beforeSrc="/ui-without-viewlint.png"
-	beforeAlt="Before"
+  beforeSrc="/ui-without-viewlint.png"
+  beforeAlt="Before"
   beforeLabel="No ViewLint"
-	afterSrc="/ui-with-viewlint.png"
-	afterAlt="After"
+  afterSrc="/ui-with-viewlint.png"
+  afterAlt="After"
   afterLabel="ViewLint"
 />
 
 ## Getting Started
 
 <Cards>
-	<Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-	<Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
+  <Card title="Quick Start" href="/docs/getting-started" />
+  <Card title="Configure ViewLint" href="/docs/configure-viewlint" />
+  <Card title="CLI Reference" href="/docs/cli-reference" />
+  <Card title="Rules Reference" href="/docs/rules-reference" />
 </Cards>
+
+## Core Ideas
+
+- ViewLint lints rendered pages, not source code.
+- A lint run is defined by a _Target_ (a View + options + an optional scope), not by a URL.
+- On the CLI, passing a URL is the easy path: it just becomes a Target with `baseURL` set.
+
+If you want the deeper model, start with [Configure Views](/docs/configure-viewlint/configure-views) and [Configure Scope](/docs/configure-viewlint/configure-scope).

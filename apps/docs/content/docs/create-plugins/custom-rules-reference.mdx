@@ -2,3 +2,159 @@
 title: Custom Rules Reference
 description: Full Custom ViewLint Rules Documentation
 ---
+
+This page documents the custom rule API.
+
+If you want a step-by-step tutorial first, see [Custom Rules Quickstart](/docs/create-plugins/custom-rules-quickstart).
+
+## Rule shape
+
+A rule is an object with a `run()` function:
+
+```ts
+import type { RuleDefinition } from "viewlint";
+
+export const myRule: RuleDefinition = {
+  async run(context) {
+    // ...
+  },
+};
+```
+
+In practice, you’ll usually use the helper for better typing:
+
+```ts
+import { defineRule } from "viewlint/plugin";
+
+export default defineRule({
+  meta: {
+    severity: "warn",
+  },
+  async run(context) {
+    // ...
+  },
+});
+```
+
+## `meta`
+
+`meta` is optional, but recommended.
+
+Common fields:
+
+- `meta.severity`: the rule’s default severity (`"error" | "warn" | "info"`)
+- `meta.docs.description`: a short description
+- `meta.schema`: a Zod schema (or an array of schemas) for validating rule options
+- `meta.defaultOptions`: default options (merged with user options)
+- `meta.hasSideEffects`: set to `true` if the rule clicks, scrolls, or otherwise changes page state
+
+## The rule context
+
+Your `run(context)` gets:
+
+- `context.page`: a Playwright `Page`
+- `context.url`: the current page URL
+- `context.scope`: a scoped locator helper (`scope.locator("...")`)
+- `context.report(...)`: report a violation
+- `context.evaluate(...)`: run code in the browser with access to `scope` + a browser-side `report`
+
+## Reporting violations
+
+### Browser-side reporting (recommended)
+
+Browser-side reporting is usually the easiest because you can iterate real DOM elements:
+
+```ts
+import { defineRule } from "viewlint/plugin";
+
+export default defineRule({
+  async run(context) {
+    await context.evaluate(({ report, scope }) => {
+      for (const el of scope.queryAll("[data-test-id]")) {
+        if (!(el instanceof HTMLElement)) continue;
+        report({
+          message: "Avoid data-test-id in production UI.",
+          element: el,
+        });
+      }
+    });
+  },
+});
+```
+
+You can also attach related elements:
+
+```ts
+report({
+  message: "Button overlaps input",
+  element: button,
+  relations: [{ description: "Overlapped input", element: input }],
+});
+```
+
+### Node-side reporting (when you already have locators)
+
+If you already have a Playwright locator, you can report from Node:
+
+```ts
+import { defineRule } from "viewlint/plugin";
+
+export default defineRule({
+  async run(context) {
+    const button = context.scope.locator("button");
+    context.report({
+      message: "Buttons should have visible labels.",
+      element: button,
+    });
+  },
+});
+```
+
+## Rule options (Zod)
+
+If your rule accepts options, define a schema.
+
+You’ll need to add `zod` to your plugin/package dependencies.
+
+ViewLint passes your options as an array.
+
+For a single options object:
+
+```ts
+import { z } from "zod";
+import { defineRule } from "viewlint/plugin";
+
+export default defineRule({
+  meta: {
+    schema: z.object({
+      max: z.number().int().min(0),
+    }),
+    defaultOptions: [{ max: 3 }],
+  },
+
+  async run(context) {
+    const [{ max }] = context.options;
+    void max;
+  },
+});
+```
+
+Then users configure it like:
+
+```ts
+rules: {
+	"my-plugin/my-rule": ["warn", { max: 5 }],
+}
+```
+
+## Side effects
+
+If your rule changes page state (clicks, types, scrolls, etc.), set:
+
+```ts
+meta: {
+  hasSideEffects: true;
+}
+```
+
+ViewLint will reset the page between rules when needed.

@@ -3,11 +3,127 @@ title: CLI Reference
 description: How to Use the ViewLint CLI
 ---
 
-Welcome to the docs! You can start writing documents in `/content/docs`.
+## Usage
 
-## What is Next?
+```bash
+viewlint [options] <url> [url...]
+```
 
-<Cards>
-  <Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
-</Cards>
+Note: `--selector`, `--scope`, and `--option` accept multiple values. If you’re linting URLs, put the URLs first and put these flags at the end.
+
+You can lint more than one URL in a single run:
+
+```bash
+viewlint https://example.com https://example.org
+```
+
+If you don’t have ViewLint installed globally, run it through your package manager:
+
+```bash tab="NPM"
+npx viewlint https://example.com
+```
+
+```bash tab="PNPM"
+pnpm dlx viewlint https://example.com
+```
+
+```bash tab="Bun"
+bunx viewlint https://example.com
+```
+
+```bash tab="Yarn"
+yarn dlx viewlint https://example.com
+```
+
+## Targets (the real unit of linting)
+
+On the CLI it looks like ViewLint “lints URLs”. That’s the easy path.
+
+Under the hood, ViewLint lints **Targets**:
+
+- a **View** (how to open and prepare the page)
+- **option layers** (Playwright settings like `baseURL`)
+- an optional **scope** (which part of the page to lint)
+
+Passing a URL just creates a Target with `baseURL` set for you.
+
+If you want to learn the deeper model, start with [Configure Views](/docs/configure-viewlint/configure-views) and [Configure Scope](/docs/configure-viewlint/configure-scope).
+
+## Options
+
+### `-c`, `--config <path>`
+
+Use a specific config file instead of searching for `viewlint.config.ts`, `viewlint.config.mjs`, or `viewlint.config.js`.
+
+Related: [Configuration Files](/docs/configure-viewlint/configuration-files)
+
+### `--view <name>`
+
+Use a named View from your config.
+
+### `--option <name...>`
+
+Apply one or more named option layers from your config (in order).
+
+Example:
+
+```bash
+viewlint --option local
+```
+
+### `--scope <name...>`
+
+Apply one or more named scopes from your config (in order).
+
+### `--selector <css...>`
+
+Add one or more ad-hoc scope roots using CSS selectors.
+
+Example (lint only a specific region):
+
+```bash
+viewlint https://example.com --selector "#checkout" ".modal"
+```
+
+### `--quiet`
+
+Report errors only.
+
+### `--max-warnings <n>`
+
+Set how many warnings are allowed before ViewLint exits with a non-zero code.
+
+### `-f`, `--format <format>`
+
+Choose an output format:
+
+- `stylish` (default)
+- `json`
+
+### `-o`, `--output-file <path>`
+
+Write output to a file instead of stdout.
+
+### `--verbose`
+
+Print progress/debug details to stderr.
+
+### `--init`
+
+Not implemented yet. For now, use [Getting Started](/docs/getting-started) (`npm init @viewlint/config`).
+
+### `--mcp`
+
+Start the ViewLint MCP server. This currently runs `npx @viewlint/mcp@latest` for you.
+
+Related: [MCP Server Setup](/docs/mcp-server)
+
+### `-h`, `--help` and `-v`, `--version`
+
+Show help or print the version.
+
+## Exit codes
+
+- `0`: no errors (and warnings are within `--max-warnings`)
+- `1`: lint errors found, or too many warnings
+- `2`: invalid CLI usage or an internal/config error

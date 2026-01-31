@@ -1,13 +1,53 @@
 ---
 title: Configure ViewLint
-description: Your first document
+description: Configure Targets, Views, Scopes, and Rules
 ---
 
-Welcome to the docs! You can start writing documents in `/content/docs`.
+ViewLint is configured with a `viewlint.config.ts` file.
 
-## What is Next?
+If you used the quick start, you already have a working config. This section explains how it works and how to customize it.
+
+## The mental model
+
+ViewLint doesn’t lint “projects” or “files”. It lints **Targets**.
+
+A Target is:
+
+- a **View**: how to open the page and get it into the right state
+- **option layers**: settings like `baseURL`, viewport, storage state, etc.
+- an optional **scope**: which part of the page to lint
+
+On the CLI, passing a URL is the easy path: ViewLint turns it into a Target by setting `baseURL`.
+
+## What do you want to change?
 
 <Cards>
-  <Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
+  <Card
+    title="Configuration Files"
+    href="/docs/configure-viewlint/configuration-files"
+  />
+  <Card
+    title="Configure Rules"
+    href="/docs/configure-viewlint/configure-rules"
+  />
+  <Card
+    title="Configure Plugins"
+    href="/docs/configure-viewlint/configure-plugins"
+  />
+  <Card
+    title="Configure Views"
+    href="/docs/configure-viewlint/configure-views"
+  />
+  <Card
+    title="Configure Scope"
+    href="/docs/configure-viewlint/configure-scope"
+  />
+  <Card
+    title="Combine Configs"
+    href="/docs/configure-viewlint/combining-configurations"
+  />
+  <Card
+    title="Differences from ESLint"
+    href="/docs/configure-viewlint/differences-from-eslint"
+  />
 </Cards>

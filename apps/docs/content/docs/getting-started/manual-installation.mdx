@@ -5,38 +5,64 @@ description: Make a Custom ViewLint Setup
 
 You can also manually set up ViewLint in your project.
 
-1. Install the ViewLint package in your project:
+## 1) Install packages
+
+Install ViewLint and the built-in rules:
 
 ```bash tab="NPM"
-npm install viewlint@latest
+npm install --save-dev viewlint@latest @viewlint/rules@latest
 ```
 
 ```bash tab="PNPM"
-pnpm add viewlint@latest
+pnpm add --save-dev viewlint@latest @viewlint/rules@latest
 ```
 
 ```bash tab="Bun"
-bun add viewlint@latest
+bun add --dev viewlint@latest @viewlint/rules@latest
 ```
 
 ```bash tab="Yarn"
-yarn add viewlint@latest
+yarn add --dev viewlint@latest @viewlint/rules@latest
 ```
 
-2. Add a `viewlint.config.js` file:
+## 2) Create a config file
 
-> TypeScript is also supported! Just create the file as `viewlint.config.ts`
+Create `viewlint.config.ts` in your project root:
 
-```sh
-touch viewlint.config.js
+```bash
+touch viewlint.config.ts
 ```
 
-3. Add configuration to the `viewlint.config.js` file. Refer to Configure Viewlint for more ifnormation on adding rules, custom configurations, plugins, and more.
+Add this starter config:
 
-```js
-import { defineConfig } from "viewlint/config"
+```ts
+import { defineConfig } from "viewlint/config";
+import rules from "@viewlint/rules";
 
-export default defineConfig([
-    
-])
+export default defineConfig({
+  plugins: {
+    rules,
+  },
+  extends: ["rules/recommended"],
+});
 ```
+
+## 3) Run ViewLint
+
+```bash tab="NPM"
+npx viewlint https://example.com
+```
+
+```bash tab="PNPM"
+pnpm dlx viewlint https://example.com
+```
+
+```bash tab="Bun"
+bunx viewlint https://example.com
+```
+
+```bash tab="Yarn"
+yarn dlx viewlint https://example.com
+```
+
+Next: learn how [Targets work](/docs/configure-viewlint/configure-scope) and how to [configure Views](/docs/configure-viewlint/configure-views).

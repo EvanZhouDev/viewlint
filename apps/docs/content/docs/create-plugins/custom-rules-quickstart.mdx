@@ -2,3 +2,84 @@
 title: Custom Rules Quickstart
 description: Get Started with your Own ViewLint Rules
 ---
+
+This page walks you through creating a tiny ViewLint plugin with one rule.
+
+The goal: report any `<marquee>` tag (as a simple example).
+
+## 1) Create a rule
+
+Create `viewlint-plugin/rules/no-marquee.ts`:
+
+```ts
+import { defineRule } from "viewlint/plugin";
+
+export default defineRule({
+  meta: {
+    severity: "warn",
+    docs: {
+      description: "Disallow <marquee> elements",
+    },
+  },
+
+  async run(context) {
+    await context.evaluate(({ report, scope }) => {
+      for (const el of scope.queryAll("marquee")) {
+        if (!(el instanceof HTMLElement)) continue;
+        report({
+          message: "Avoid <marquee>. Use modern CSS animations instead.",
+          element: el,
+        });
+      }
+    });
+  },
+});
+```
+
+## 2) Create a plugin
+
+Create `viewlint-plugin/index.ts`:
+
+```ts
+import noMarquee from "./rules/no-marquee";
+
+const plugin = {
+  meta: {
+    name: "viewlint-plugin-example",
+  },
+  rules: {
+    "no-marquee": noMarquee,
+  },
+};
+
+export default plugin;
+```
+
+## 3) Load the plugin in your config
+
+In `viewlint.config.ts`:
+
+```ts
+import { defineConfig } from "viewlint/config";
+import rules from "@viewlint/rules";
+import example from "./viewlint-plugin";
+
+export default defineConfig({
+  plugins: {
+    rules,
+    example,
+  },
+  extends: ["rules/recommended"],
+  rules: {
+    "example/no-marquee": "warn",
+  },
+});
+```
+
+## 4) Run ViewLint
+
+```bash
+viewlint https://example.com
+```
+
+Next: [Custom Rules Reference](/docs/create-plugins/custom-rules-reference)

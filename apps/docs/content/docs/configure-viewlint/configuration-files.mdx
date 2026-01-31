@@ -2,3 +2,58 @@
 title: Configuration Files
 description: Edit ViewLint Configuration
 ---
+
+ViewLint reads its configuration from a file in your project.
+
+## File name
+
+ViewLint looks for one of these files (starting from your current directory and walking upward):
+
+- `viewlint.config.ts`
+- `viewlint.config.mjs`
+- `viewlint.config.js`
+
+You can also point to a specific file on the CLI:
+
+```bash
+viewlint --config path/to/viewlint.config.ts https://example.com
+```
+
+## Export shape
+
+Your config file should export either:
+
+- a single config object, or
+- an array of config objects
+
+Most projects use the helper from `viewlint/config`:
+
+```ts
+import { defineConfig } from "viewlint/config";
+import rules from "@viewlint/rules";
+
+export default defineConfig({
+  plugins: {
+    rules,
+  },
+  extends: ["rules/recommended"],
+});
+```
+
+## What can you configure?
+
+At a high level:
+
+- **plugins**: where rules and shared configs come from
+- **rules**: what checks run, and how strict they are
+- **views**: how to open and prepare the page
+- **options**: reusable option layers (like `baseURL`)
+- **scopes**: reusable scope roots (what part of the page to lint)
+
+If you’re just getting started, you usually only touch **rules**.
+
+Next:
+
+- [Configure Rules](/docs/configure-viewlint/configure-rules)
+- [Configure Views](/docs/configure-viewlint/configure-views)
+- [Configure Scope](/docs/configure-viewlint/configure-scope)

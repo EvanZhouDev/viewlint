@@ -2,3 +2,50 @@
 title: Configure Scope
 description: Lint only Part of a Website
 ---
+
+Scope lets you lint **only a part of the page**.
+
+By default, ViewLint lints the whole page (`document.body`).
+
+## Quick way: `--selector`
+
+If you just want to focus on a region, use ad-hoc CSS selectors:
+
+```bash
+viewlint https://example.com --selector "#checkout" ".modal"
+```
+
+This is the easiest way to “narrow the Target” without touching config.
+
+## Reusable scopes in config
+
+For repeatable workflows, define named scopes in `viewlint.config.ts`:
+
+```ts
+import { defineConfig } from "viewlint/config";
+import rules from "@viewlint/rules";
+
+export default defineConfig({
+  plugins: { rules },
+  extends: ["rules/recommended"],
+
+  scopes: {
+    checkout: {
+      getLocator: ({ page }) => page.locator("#checkout"),
+    },
+  },
+});
+```
+
+Then run:
+
+```bash
+viewlint https://example.com --scope checkout
+```
+
+## Scope vs ignoring
+
+- Use **scope** when you want ViewLint to focus on a region (like a modal or a single component).
+- Use **`data-viewlint-ignore`** when you want to silence a specific subtree even when you lint the whole page.
+
+Related: [Configure Rules](/docs/configure-viewlint/configure-rules)

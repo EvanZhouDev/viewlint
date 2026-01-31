@@ -3,11 +3,108 @@ title: Rules Reference
 description: Pre-built ViewLint Rules
 ---
 
-Welcome to the docs! You can start writing documents in `/content/docs`.
+ViewLint rules run on the **rendered page** (not your source code).
 
-## What is Next?
+This page documents the rules shipped in `@viewlint/rules`.
 
-<Cards>
-  <Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
-</Cards>
+## Use the built-in rules
+
+```ts
+import { defineConfig } from "viewlint/config";
+import rules from "@viewlint/rules";
+
+export default defineConfig({
+  plugins: {
+    rules,
+  },
+  extends: ["rules/recommended"],
+});
+```
+
+Related: [Configure Rules](/docs/configure-viewlint/configure-rules)
+
+## Presets
+
+### `rules/recommended`
+
+Enabled by default in the quick start:
+
+- `rules/hit-target-obscured` (error)
+- `rules/clipped-content` (error)
+- `rules/container-overflow` (error)
+- `rules/overlapped-elements` (error)
+- `rules/text-overflow` (error)
+- `rules/text-contrast` (warn)
+- `rules/unexpected-scrollbar` (error)
+
+### `rules/all`
+
+Everything in `recommended`, plus:
+
+- `rules/corner-radius-coherence` (warn)
+- `rules/misalignment` (warn)
+- `rules/space-misuse` (warn)
+- `rules/text-proximity` (warn)
+- `rules/text-ragged-lines` (warn)
+
+## Rule reference
+
+All rules in `@viewlint/rules` currently take **no options**.
+
+### `rules/hit-target-obscured`
+
+Detects interactive elements that are significantly covered by another element (hard to click).
+
+### `rules/clipped-content`
+
+Detects content clipped by `overflow: hidden` / `overflow: clip`.
+
+### `rules/container-overflow`
+
+Detects elements that overflow their parent container.
+
+### `rules/overlapped-elements`
+
+Detects layout overlaps between large, normal-flow elements.
+
+### `rules/unexpected-scrollbar`
+
+Detects small “almost invisible” scrollbars (usually a 1–20px overflow bug).
+
+### `rules/text-overflow`
+
+Detects text that visually extends outside its container.
+
+### `rules/text-contrast`
+
+Detects low-contrast text using screenshot-based sampling.
+
+### `rules/corner-radius-coherence`
+
+Detects nested corner radii that look visually inconsistent.
+
+### `rules/misalignment`
+
+Detects sibling elements in flex layouts that look like they were meant to align but are slightly off.
+
+### `rules/space-misuse`
+
+Detects containers with irregular or wasteful empty space around content.
+
+### `rules/text-proximity`
+
+Detects horizontally adjacent text blocks that are too close together.
+
+### `rules/text-ragged-lines`
+
+Detects awkward ragged/widowed lines in multi-line text blocks.
+
+## Suppressing rules
+
+To ignore a subtree of the DOM, use `data-viewlint-ignore`:
+
+```html
+<div data-viewlint-ignore="rules/text-contrast">...</div>
+```
+
+Use `data-viewlint-ignore="all"` to suppress all rules inside that subtree.

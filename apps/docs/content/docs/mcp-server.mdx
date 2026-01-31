@@ -3,11 +3,51 @@ title: MCP Server Setup
 description: Help Agents write UI with ViewLint
 ---
 
-Welcome to the docs! You can start writing documents in `/content/docs`.
+The ViewLint MCP server lets an AI agent run ViewLint as a tool.
 
-## What is Next?
+It’s useful when you want the agent to get fast feedback from the _rendered page_ while it’s building UI.
 
-<Cards>
-  <Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
-</Cards>
+## Run the server
+
+The MCP server is published as `@viewlint/mcp`.
+
+```bash
+npx @viewlint/mcp@latest
+```
+
+You can also start it from the ViewLint CLI:
+
+```bash
+viewlint --mcp
+```
+
+## Configure your editor
+
+Most MCP-capable editors accept a `command` + `args` configuration.
+
+Example for VS Code (`.vscode/mcp.json`):
+
+```json
+{
+  "servers": {
+    "ViewLint": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@viewlint/mcp@latest"]
+    }
+  }
+}
+```
+
+## Tools
+
+### `lint-urls`
+
+Lints one or more URLs.
+
+Input:
+
+- `urls`: string[] (required)
+- `configFile`: string (optional) path to a `viewlint.config.*` file
+
+Tip: when `configFile` is omitted, ViewLint uses config discovery starting from the server’s working directory.

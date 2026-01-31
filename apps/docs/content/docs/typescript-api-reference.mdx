@@ -3,11 +3,84 @@ title: TypeScript API Reference
 description: Use ViewLint Functionality Directly
 ---
 
-Welcome to the docs! You can start writing documents in `/content/docs`.
+Most people use the CLI.
 
-## What is Next?
+Use the TypeScript API when you want to:
 
-<Cards>
-  <Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
-</Cards>
+- run ViewLint from a script
+- build a custom integration
+- lint custom Targets programmatically
+
+## `ViewLint`
+
+```ts
+import { ViewLint } from "viewlint";
+```
+
+### `new ViewLint(options?)`
+
+The constructor accepts an `options` object:
+
+- `overrideConfigFile?: string` - use a specific config file path
+- `baseConfig?: Config | Config[]` - applied before the discovered config file
+- `overrideConfig?: Config | Config[]` - applied after everything else
+- `plugins?: Record<string, Plugin>` - extra plugins (in addition to config)
+
+## Lint targets
+
+```ts
+import { ViewLint } from "viewlint";
+import rules from "@viewlint/rules";
+import { defaultView, defineConfig } from "viewlint/config";
+
+const viewlint = new ViewLint({
+  baseConfig: defineConfig({
+    plugins: { rules },
+    extends: ["rules/recommended"],
+  }),
+});
+
+const results = await viewlint.lintTargets([
+  {
+    view: defaultView,
+    options: {
+      context: {
+        baseURL: "https://example.com",
+      },
+    },
+  },
+]);
+```
+
+In practice, most projects create Targets via config and the CLI.
+
+Related: [Targets (mental model)](/docs/configure-viewlint)
+
+## Format results
+
+ViewLint ships with:
+
+- `stylish`
+- `json`
+
+```ts
+const formatter = await viewlint.loadFormatter("stylish");
+const output = await formatter.format(results);
+process.stdout.write(output);
+```
+
+## Config helpers
+
+```ts
+import { defineConfig, defineViewFromActions } from "viewlint/config";
+```
+
+See: [Configuration Files](/docs/configure-viewlint/configuration-files)
+
+## Rule helper
+
+```ts
+import { defineRule } from "viewlint/plugin";
+```
+
+See: [Custom Rules Reference](/docs/create-plugins/custom-rules-reference)

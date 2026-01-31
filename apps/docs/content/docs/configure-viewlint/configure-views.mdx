@@ -2,3 +2,73 @@
 title: Configure Views
 description: Change the Setup of Your Website
 ---
+
+A **View** tells ViewLint how to open a page and get it into the right state.
+
+Examples:
+
+- log in before linting
+- open a modal
+- navigate to a specific route
+- wait for data to load
+
+Views are a core part of a Target.
+
+## The default view
+
+If you pass a URL on the CLI, ViewLint uses the default View.
+
+That default View just:
+
+1. navigates to `baseURL`
+2. waits for the page to settle
+
+## Define a view with actions
+
+For simple flows, use `defineViewFromActions`:
+
+```ts
+import { defineConfig, defineViewFromActions } from "viewlint/config";
+import rules from "@viewlint/rules";
+
+export default defineConfig({
+  plugins: { rules },
+  extends: ["rules/recommended"],
+
+  views: {
+    loggedIn: defineViewFromActions([
+      async ({ page }) => {
+        await page.goto("/");
+        await page.getByRole("link", { name: "Sign in" }).click();
+        await page.getByLabel("Email").fill("you@example.com");
+        await page.getByLabel("Password").fill("password");
+        await page.getByRole("button", { name: "Sign in" }).click();
+      },
+    ]),
+  },
+});
+```
+
+Then run:
+
+```bash
+viewlint https://example.com --view loggedIn
+```
+
+## Define option layers for `baseURL`
+
+Views created with `defineViewFromActions()` expect a `baseURL`.
+
+If you don’t want to pass a URL every time, put it in a named option layer:
+
+```ts
+options: {
+	local: { context: { baseURL: "http://localhost:3000" } },
+}
+```
+
+And run:
+
+```bash
+viewlint --option local --view loggedIn
+```

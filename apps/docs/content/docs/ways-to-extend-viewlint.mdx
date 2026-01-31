@@ -3,11 +3,40 @@ title: Ways to Extend ViewLint
 description: Modify ViewLint with Custom Plugins, Rules, and Configs
 ---
 
-Welcome to the docs! You can start writing documents in `/content/docs`.
+Most teams extend ViewLint in one of these ways.
 
-## What is Next?
+## 1) Customize your config
 
-<Cards>
-  <Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
-</Cards>
+Start here.
+
+- turn rules on/off
+- use `rules/recommended` or `rules/all`
+- add named option layers, scopes, and views
+
+Links:
+
+- [Configure ViewLint](/docs/configure-viewlint)
+- [Configure Rules](/docs/configure-viewlint/configure-rules)
+- [Configure Views](/docs/configure-viewlint/configure-views)
+- [Configure Scope](/docs/configure-viewlint/configure-scope)
+
+## 2) Write a plugin (custom rules + presets)
+
+If you need checks that are specific to your UI or design system, create a plugin.
+
+Links:
+
+- [Create Plugins](/docs/create-plugins)
+- [Custom Rules Quickstart](/docs/create-plugins/custom-rules-quickstart)
+
+## 3) Use the TypeScript API
+
+If you want to run ViewLint programmatically (CI pipelines, custom tooling, etc.).
+
+Link: [TypeScript API Reference](/docs/typescript-api-reference)
+
+## 4) Use the MCP server
+
+If you want an agent to run ViewLint as a tool.
+
+Link: [MCP Server Setup](/docs/mcp-server)
