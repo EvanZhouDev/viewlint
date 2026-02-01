@@ -5,11 +5,13 @@ description: Help Agents write UI with ViewLint
 
 The ViewLint MCP server lets an AI agent run ViewLint as a tool.
 
-It’s useful when you want the agent to get fast feedback from the _rendered page_ while it’s building UI.
+It's useful when you want the agent to get fast feedback from the _rendered page_ while it's building UI. Instead of guessing, the agent can lint a URL and use the results to guide its next change.
+
+If you are new to MCP, see [their website](https://modelcontextprotocol.io/docs/getting-started/intro) for more information.
 
 ## Run the server
 
-The MCP server is published as `@viewlint/mcp`.
+The `stdio` MCP server is published as `@viewlint/mcp`.
 
 ```bash
 npx @viewlint/mcp@latest
@@ -30,7 +32,7 @@ Example for VS Code (`.vscode/mcp.json`):
 ```json
 {
   "servers": {
-    "ViewLint": {
+    "viewlint": {
       "type": "stdio",
       "command": "npx",
       "args": ["@viewlint/mcp@latest"]
@@ -45,9 +47,16 @@ Example for VS Code (`.vscode/mcp.json`):
 
 Lints one or more URLs.
 
+This tool is intentionally simple: it always uses the Default View and treats each URL as a Target with `baseURL` set.
+
 Input:
 
-- `urls`: string[] (required)
-- `configFile`: string (optional) path to a `viewlint.config.*` file
+- Urls (Required): `string[]`
+- ConfigFile (Optional): `string` path to a `viewlint.config.*` file
 
-Tip: when `configFile` is omitted, ViewLint uses config discovery starting from the server’s working directory.
+When `configFile` is omitted, ViewLint uses config discovery starting from the server’s working directory.
+
+Related:
+
+- [CLI Reference](/docs/cli-reference)
+- [Configuration Files](/docs/configure-viewlint/configuration-files)

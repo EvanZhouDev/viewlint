@@ -3,15 +3,17 @@ title: Ways to Extend ViewLint
 description: Modify ViewLint with Custom Plugins, Rules, and Configs
 ---
 
-Most teams extend ViewLint in one of these ways.
+There are a few common ways teams extend ViewLint.
 
-## 1) Customize your config
+The best path depends on what you are trying to do: tune what checks run, add new checks, or integrate ViewLint into a bigger workflow.
 
-Start here.
+## Customize your config
 
-- turn rules on/off
-- use `rules/recommended` or `rules/all`
-- add named option layers, scopes, and views
+This includes:
+
+- Turning rules on/off
+- Integrating pre-built plugins or rules
+- Add named Option layers, Scopes, and Views.
 
 Links:
 
@@ -20,23 +22,23 @@ Links:
 - [Configure Views](/docs/configure-viewlint/configure-views)
 - [Configure Scope](/docs/configure-viewlint/configure-scope)
 
-## 2) Write a plugin (custom rules + presets)
+## Write a plugin (Custom Rules + Presets)
 
-If you need checks that are specific to your UI or design system, create a plugin.
+If you need checks that are specific to your UI or design system, you'll need to create a plugin.
 
 Links:
 
 - [Create Plugins](/docs/create-plugins)
 - [Custom Rules Quickstart](/docs/create-plugins/custom-rules-quickstart)
 
-## 3) Use the TypeScript API
+## Build a Custom Workflow
 
-If you want to run ViewLint programmatically (CI pipelines, custom tooling, etc.).
+If you want to run ViewLint programmatically (CI pipelines, custom tooling, and scripts), you'll need to use the TypeScript API.
 
 Link: [TypeScript API Reference](/docs/typescript-api-reference)
 
-## 4) Use the MCP server
+## Use the MCP server
 
-If you want an agent to run ViewLint as a tool.
+If you want an Agent to run ViewLint easily as a tool, use the MCP server.
 
 Link: [MCP Server Setup](/docs/mcp-server)
