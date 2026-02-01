@@ -3,27 +3,22 @@ title: Configure Rules
 description: Add and Configure ViewLint Rules
 ---
 
-Rules are what ViewLint runs on a page.
+Rules report issues that you see with ViewLint. A Rule is a special piece of Playwright code executed by the ViewLint Engine that call a special report function when it detects a specific pattern.
 
-## Rule IDs
+This section focuses on configuring pre-existing rules that have already been loaded from plugins. If you wish to define your own rules, learn more in [Custom Rules Quickstart](/docs/custom-rules-quickstart).
 
-Rule IDs look like `pluginNamespace/ruleName`.
-
-For the built-in rules package:
-
-- plugin namespace: `rules`
-- rule IDs: like `rules/text-contrast`
+Note that ViewLint comes with [built-in rules](/docs/rules-reference) that you can configure.
 
 ## Rule severities
 
 Each rule can be set to one of these severities:
 
-- `"off"`: don’t run the rule
-- `"info"`: report as info
-- `"warn"`: report as a warning
-- `"error"`: report as an error
+- `"off"`: Don't run the rule
+- `"info"`: Report as info (is not incorrect, but may be of interest to the user)
+- `"warn"`: Report as a warning (is incorrect, but does not affect exit code)
+- `"error"`: Report as an error (exit code is 1 when triggered)
 
-There’s also `"inherit"`, which means “use the rule’s default severity”.
+Rules have a default severity, which they can declare in the rule definition. If you wish to keep the severity of the rule when enabling it, you can use the `"inherit"` severity.
 
 ## Configure a rule
 
@@ -37,8 +32,8 @@ export default defineConfig({
   },
   extends: ["rules/recommended"],
   rules: {
-    "rules/text-contrast": "error",
-    "rules/text-proximity": "off",
+    "text-contrast": "error",
+    "text-proximity": "off",
   },
 });
 ```
@@ -51,7 +46,7 @@ Those are written as an array:
 
 ```ts
 rules: {
-	"my-plugin/my-rule": ["warn", { /* rule-specific options */ }],
+	"my-rule": ["warn", { /* rule-specific options */ }],
 }
 ```
 
@@ -59,12 +54,38 @@ The available options depend on the rule.
 
 See: [Rules Reference](/docs/rules-reference)
 
-## Suppress a specific UI area
+## Rules from Plugins
 
-ViewLint supports an HTML escape hatch:
+To specify a rule that is defined inside a plugin, use the format `pluginNamespace/ruleName`.
 
-```html
-<div data-viewlint-ignore="rules/text-contrast">...</div>
+The plugin namespace is whatever name you defined in the plugins object.
+
+```ts
+import { defineConfig } from "viewlint/config";
+import rules from "@viewlint/rules";
+
+export default defineConfig({
+  plugins: {
+    myExampleNamespace: rules,
+  },
+  extends: ["myExampleNamespace/recommended"],
+  rules: {
+    "myExampleNamespace/text-contrast": "error",
+    "myExampleNamespace/text-proximity": "off",
+  },
+});
 ```
 
-Use `data-viewlint-ignore="all"` to suppress all rules inside that subtree.
+In this case, we just defined the namespace to be `myExampleNamespace` and we can edit the rule severity there.
+
+## Disabling Rules
+
+There is an escape hatch if you wish to override a rule in your file. In order to do this, we support an HTML attribute called `data-viewlint-ignore`. When ViewLint sees this attribute on an element, the entire subtree will have the rules in `data-viewlint-ignore` suppressed. You can separate multiple rules with spaces.
+
+```html
+<div data-viewlint-ignore="rules/text-contrast rules/space-misuse">...</div>
+```
+
+Use `data-viewlint-ignore="*"` to suppress all rules inside that subtree.
+
+It is highly recommended you include a `data-viewlint-ignore-reason` or similar tag to make it clear why you decided to suppress the rule.

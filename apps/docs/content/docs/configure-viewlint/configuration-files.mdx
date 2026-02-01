@@ -3,9 +3,9 @@ title: Configuration Files
 description: Edit ViewLint Configuration
 ---
 
-ViewLint reads its configuration from a file in your project.
+You can put your ViewLint configuration into a file. These include rules, plugins, custom Views, Scopes, and Options.
 
-## File name
+## Configuration File
 
 ViewLint looks for one of these files (starting from your current directory and walking upward):
 
@@ -21,39 +21,36 @@ viewlint --config path/to/viewlint.config.ts https://example.com
 
 ## Export shape
 
-Your config file should export either:
+Your config file exports an array of configuration objects. You can use the `defineConfig` from `viewlint/config` to have type hints and support deeply nested configuration arrays.
 
-- a single config object, or
-- an array of config objects
-
-Most projects use the helper from `viewlint/config`:
+Here's an example configuration:
 
 ```ts
 import { defineConfig } from "viewlint/config";
 import rules from "@viewlint/rules";
 
-export default defineConfig({
-  plugins: {
-    rules,
+export default defineConfig([
+  {
+    plugins: {
+      rules,
+    },
+    extends: ["rules/recommended"],
   },
-  extends: ["rules/recommended"],
-});
+  {
+    rules: {
+      "text-contrast": "error"
+    }
+  }
+]);
 ```
 
-## What can you configure?
+## Configuration Objects
 
-At a high level:
+Here's a high-level overview of what you can edit. Click on the links to see in more detail how these features work.
 
-- **plugins**: where rules and shared configs come from
-- **rules**: what checks run, and how strict they are
-- **views**: how to open and prepare the page
-- **options**: reusable option layers (like `baseURL`)
-- **scopes**: reusable scope roots (what part of the page to lint)
-
-If you’re just getting started, you usually only touch **rules**.
-
-Next:
-
-- [Configure Rules](/docs/configure-viewlint/configure-rules)
-- [Configure Views](/docs/configure-viewlint/configure-views)
-- [Configure Scope](/docs/configure-viewlint/configure-scope)
+- `extends`: An array of strings, configuration objects, or configuration arrays that contain additional configuration to apply. Only available when using `defineConfig`.
+- [`rules`](/docs/configure-viewlint/configure-rules): An object containing the configured rules.
+- [`plugins`](/docs/configure-plugins): An object containing a name-value mapping of plugin names to plugin objects.
+- [`views`](/docs/configure-views): An object containing a name-value mapping of view names to Views, representing preset, reusable views.
+- [`options`](/docs/configure-views): An object containing a name-value mapping of option names to Options, representing preset, reusable options.
+- [`scopes`](/docs/configure-views): An object containing a name-value mapping of scope names to Scope functions/arrays, representing preset, reusable scopes.

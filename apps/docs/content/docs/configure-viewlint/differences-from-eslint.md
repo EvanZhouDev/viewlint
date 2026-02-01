@@ -5,47 +5,34 @@ description: Differences between ViewLint and ESLint Configuration
 
 ViewLint is heavily inspired by ESLint.
 
-If you already know ESLint, a lot of things will feel familiar (plugins, rules, recommended presets). But ViewLint is a UI linter, so a few core ideas are different.
+If you already know ESLint, a lot of things will feel familiar (configuration, plugins, rules).
+But there are some differences in the core principles that you need to understand before continuing.
 
 ## What gets linted
 
 - ESLint lints **source files**.
+    - This includes files, directories, globs, and so on
 - ViewLint lints **rendered pages** (what a user actually sees in the browser).
+    - ViewLint handles these in the form of **Targets**. These comprise of a:
+        - **View**: How to open and prepare the page
+        - **Options**: Inputs passed into **View**
+        - **Scope**: What part of the page is linted
 
-## Targets vs files
+For a more general overview of this behavior, see [Core Concepts](/docs/core-concepts).
+For a more detailed description of creating Views and Scope, see [Configure Views](/docs/configure-viewlint/configure-views) and [Configure Scope](/docs/configure-viewlint/configure-scope)
 
-In ESLint, you usually pass files/directories/globs.
+## Rules
 
-In ViewLint, the unit of linting is a **Target**:
+Instead of running rules on an AST like ESLint, ViewLint runs rules on a DOM. Specifically, it runs them on a Playwright Page. This gives rules a lot of power, including reading the DOM elements, taking screenshots, and even interacting with the page. Here are some differences to note comparing this to ESLint:
 
-- a View (how to open and prepare the page)
-- option layers (like `baseURL`)
-- an optional scope (which part of the page to lint)
+- **Rules can mutate the page**: When this happens, they should self-declare as `hasSideEffects` and the ViewLint Engine will automatically reset the page using what you declared in the View
+- **Rules have a default severity**: Unlike ESLint where rules are just patterns, ViewLint rules denote more than that and thus can also bundle a default severity.
+    - These default severities can be `info`, `warn`, and `error` (which of course can be overridden by configuration)
+    - `info` is a new severity that reports something that may be of interest, but is not necessarily wrong.
 
-Passing a URL on the CLI is just a convenience that creates a Target for you.
+See [Configure Rules](/docs/configure-viewlint/configure-rules) for more information
 
-See: [Configure Views](/docs/configure-viewlint/configure-views) and [Configure Scope](/docs/configure-viewlint/configure-scope)
-
-## Views are first-class
-
-UI linting often needs “setup” that code linting doesn’t:
-
-- logging in
-- navigating to a route
-- opening a modal
-- waiting for data to load
-
-That’s what Views are for.
-
-## Scope is DOM-based
-
-ViewLint “scope” is about **DOM regions**, not files.
-
-You can scope a run to a subtree with named scopes or `--selector`.
-
-See: [Configure Scope](/docs/configure-viewlint/configure-scope)
-
-## Suppression is HTML-based
+## Rule Suppression
 
 Instead of `eslint-disable` comments, ViewLint supports:
 
@@ -53,12 +40,4 @@ Instead of `eslint-disable` comments, ViewLint supports:
 <div data-viewlint-ignore="rules/text-contrast">...</div>
 ```
 
-See: [Configure Rules](/docs/configure-viewlint/configure-rules)
-
-## Feature gaps (for now)
-
-ViewLint is early-stage. Some common ESLint features don’t exist yet in ViewLint, including:
-
-- file globbing / per-file config
-- autofix (`--fix`)
-- formatter ecosystem
+See [Configure Rules](/docs/configure-viewlint/configure-rules) for more information

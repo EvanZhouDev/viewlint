@@ -3,51 +3,24 @@ title: Configure ViewLint
 description: Configure Targets, Views, Scopes, and Rules
 ---
 
-ViewLint is configured with a `viewlint.config.ts` file.
+ViewLint is designed to be easily configurable and extensible to every use case. You can start with no rules, and build up to only the rules that you need. However, we also provide a built-in bundle of rules that makes it easy to get started with ViewLint and build up to your usecase.
+
+ViewLint is primarily configured with a `viewlint.config.ts` file, which contains information about how you want to lint your websites. You can also specify a custom configuration file with the command line.
 
 If you used the quick start, you already have a working config. This section explains how it works and how to customize it.
 
-## The mental model
+Here are some of the options you can configure in ViewLint. If you are unfamiliar with the terminology or the ViewLint mental model, read more in [Core Concepts](/docs/core-concepts).
 
-ViewLint doesn’t lint “projects” or “files”. It lints **Targets**.
+- Rules: Pieces of Playwright code that ViewLint Engine runs to detect issues
+- Views: Perform authentication, or take general actions on your page before linting
+- Scope: Change what part of the page you lint
+- Plugins: Third-party plugisn to define rules, languages, and configurations for ViewLint
 
-A Target is:
+## Table of Contents
 
-- a **View**: how to open the page and get it into the right state
-- **option layers**: settings like `baseURL`, viewport, storage state, etc.
-- an optional **scope**: which part of the page to lint
-
-On the CLI, passing a URL is the easy path: ViewLint turns it into a Target by setting `baseURL`.
-
-## What do you want to change?
-
-<Cards>
-  <Card
-    title="Configuration Files"
-    href="/docs/configure-viewlint/configuration-files"
-  />
-  <Card
-    title="Configure Rules"
-    href="/docs/configure-viewlint/configure-rules"
-  />
-  <Card
-    title="Configure Plugins"
-    href="/docs/configure-viewlint/configure-plugins"
-  />
-  <Card
-    title="Configure Views"
-    href="/docs/configure-viewlint/configure-views"
-  />
-  <Card
-    title="Configure Scope"
-    href="/docs/configure-viewlint/configure-scope"
-  />
-  <Card
-    title="Combine Configs"
-    href="/docs/configure-viewlint/combining-configurations"
-  />
-  <Card
-    title="Differences from ESLint"
-    href="/docs/configure-viewlint/differences-from-eslint"
-  />
-</Cards>
+- [Configuration Files](/docs/configure-viewlint/configuration-files)
+- [Configure Rules](/docs/configure-viewlint/configure-rules)
+- [Configure Views](/docs/configure-viewlint/configure-views)
+- [Configure Scope](/docs/configure-viewlint/configure-scope)
+- [Combine Configs](/docs/configure-viewlint/combining-configurations)
+- [Differences from ESLint](/docs/configure-viewlint/differences-from-eslint)

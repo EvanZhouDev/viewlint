@@ -3,11 +3,16 @@ title: Configure Plugins
 description: Add and Configure ViewLint Plugins
 ---
 
-Plugins are how ViewLint learns new rules and presets.
+Plugins allow you to easily extend ViewLint in a way that scales. Plugins can include:
+
+- Custom Rules to validate your output
+- Custom Configurations
+
+This section focuses on how you can install 3rd party (or first party) plugins. If you want to create your own plugins, go to [Create Plugins](/docs/create-plugins)
 
 ## Add a plugin
 
-Plugins are just JavaScript/TypeScript objects.
+Plugins are simply JavaScript/TypeScript objects.
 
 To use one, import it and put it under `plugins`:
 
@@ -24,38 +29,20 @@ export default defineConfig({
 
 The key you choose (`rules` in the example) becomes the **plugin namespace**.
 
-## Use a plugin’s preset
+## Local and Virtual Plugins
 
-If a plugin ships configs, you can extend them:
-
-```ts
-import { defineConfig } from "viewlint/config";
-import rules from "@viewlint/rules";
-
-export default defineConfig({
-  plugins: {
-    rules,
-  },
-  extends: ["rules/recommended"],
-});
-```
-
-## Use a plugin rule
-
-Rules are referenced as `namespace/rule-name`:
+Since plugins are simply objects, they do not have to be published on NPM to be used. You can always import a local object, or even directly declare the plugin inline. For example:
 
 ```ts
 import { defineConfig } from "viewlint/config";
-import rules from "@viewlint/rules";
+import myPlugin from "./myPlugin";
 
 export default defineConfig({
   plugins: {
-    rules,
-  },
-  rules: {
-    "rules/text-contrast": "warn",
+    myPlugin,
+    anotherPlugin: {
+      // Define your Virtual Plugin here
+    }
   },
 });
 ```
-
-Next: [Configure Rules](/docs/configure-viewlint/configure-rules)
