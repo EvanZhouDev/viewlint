@@ -27,18 +27,6 @@ export default defineRule({
 				const MIN_TEXT_CLIP_THRESHOLD = 3
 				const NEGATIVE_MARGIN_TOLERANCE = 2
 
-				const isLineClamped = (style: CSSStyleDeclaration): boolean => {
-					const raw =
-						style.getPropertyValue("-webkit-line-clamp") ||
-						style.getPropertyValue("line-clamp")
-					const value = raw.trim()
-					if (value.length === 0) return false
-					if (value === "none") return false
-					const parsed = Number.parseFloat(value)
-					if (Number.isFinite(parsed)) return parsed > 0
-					return true
-				}
-
 				const hasObviousMediaDescendant = (el: HTMLElement): boolean => {
 					return Boolean(el.querySelector("img, video, canvas, svg, picture"))
 				}
@@ -69,12 +57,12 @@ export default defineRule({
 						const style = window.getComputedStyle(child)
 						const first =
 							axis === "x"
-								? parsePx(style.marginLeft)
-								: parsePx(style.marginTop)
+								? domHelpers.parsePx(style.marginLeft)
+								: domHelpers.parsePx(style.marginTop)
 						const second =
 							axis === "x"
-								? parsePx(style.marginRight)
-								: parsePx(style.marginBottom)
+								? domHelpers.parsePx(style.marginRight)
+								: domHelpers.parsePx(style.marginBottom)
 
 						if (first >= 0 && second >= 0) continue
 
@@ -90,50 +78,6 @@ export default defineRule({
 					}
 
 					return false
-				}
-
-				const parsePx = (value: string): number => {
-					const parsed = Number.parseFloat(value)
-					return Number.isFinite(parsed) ? parsed : 0
-				}
-
-				const getFontSizePx = (style: CSSStyleDeclaration): number | null => {
-					const parsed = Number.parseFloat(style.fontSize)
-					return Number.isFinite(parsed) ? parsed : null
-				}
-
-				const getPaddingBoxSize = (
-					el: HTMLElement,
-					style: CSSStyleDeclaration,
-				): { width: number; height: number } => {
-					const rect = el.getBoundingClientRect()
-					const borderTop = parsePx(style.borderTopWidth)
-					const borderRight = parsePx(style.borderRightWidth)
-					const borderBottom = parsePx(style.borderBottomWidth)
-					const borderLeft = parsePx(style.borderLeftWidth)
-
-					return {
-						width: Math.max(0, rect.width - borderLeft - borderRight),
-						height: Math.max(0, rect.height - borderTop - borderBottom),
-					}
-				}
-
-				const getPaddingBoxRect = (
-					el: HTMLElement,
-					style: CSSStyleDeclaration,
-				): { top: number; right: number; bottom: number; left: number } => {
-					const rect = el.getBoundingClientRect()
-					const borderTop = parsePx(style.borderTopWidth)
-					const borderRight = parsePx(style.borderRightWidth)
-					const borderBottom = parsePx(style.borderBottomWidth)
-					const borderLeft = parsePx(style.borderLeftWidth)
-
-					return {
-						top: rect.top + borderTop,
-						right: rect.right - borderRight,
-						bottom: rect.bottom - borderBottom,
-						left: rect.left + borderLeft,
-					}
 				}
 
 				const allElements = scope.queryAll("*")
@@ -158,14 +102,14 @@ export default defineRule({
 
 					const clipsX = domHelpers.isClippingOverflowValue(overflowX)
 					const clipsY = domHelpers.isClippingOverflowValue(overflowY)
-					const clampsTextVertically = isLineClamped(style)
+					const clampsTextVertically = domHelpers.isLineClamped(el)
 					const clipsYForCheck = clipsY && !clampsTextVertically
 
 					if (!clipsX && !clipsY) continue
 					if (clipsX && domHelpers.hasTextOverflowEllipsis(el)) continue
 
 					const { scrollWidth, scrollHeight } = el
-					const paddingBox = getPaddingBoxSize(el, style)
+					const paddingBox = domHelpers.getPaddingBoxSize(el)
 
 					const clippedAmountX = scrollWidth - paddingBox.width
 					const clippedAmountY = scrollHeight - paddingBox.height
@@ -175,11 +119,10 @@ export default defineRule({
 
 					if (clippedY) {
 						const hasVisibleText = el.innerText.trim().length > 0
-						const fontSizePx = getFontSizePx(style)
-						const textClipThreshold =
-							hasVisibleText && fontSizePx
-								? Math.max(MIN_TEXT_CLIP_THRESHOLD, fontSizePx * 0.2)
-								: CLIP_THRESHOLD
+						const fontSizePx = domHelpers.getFontSize(el)
+						const textClipThreshold = hasVisibleText
+							? Math.max(MIN_TEXT_CLIP_THRESHOLD, fontSizePx * 0.2)
+							: CLIP_THRESHOLD
 
 						clippedY = clippedAmountY > textClipThreshold
 					}
@@ -211,7 +154,7 @@ export default defineRule({
 							el.children.length <= 5
 
 						if (canVerifyByChildRects) {
-							const clipRect = getPaddingBoxRect(el, style)
+							const clipRect = domHelpers.getPaddingBoxRect(el)
 							let fitsX = true
 							let fitsY = true
 
@@ -272,8 +215,6 @@ export default defineRule({
 								Math.abs(leftOverflow - rightOverflow) <= 2
 
 							if (isSymmetric) {
-								// Treat as intentional layout gutter clipping.
-								// (Still report on asymmetric single-sided clipping.)
 								clippedX = false
 							}
 						}

@@ -3,14 +3,51 @@ export type VisibilityOptions = {
 	checkPointerEvents?: boolean
 }
 
+/**
+ * Represents overflow amounts in each direction.
+ */
+export type OverflowBox = {
+	top: number
+	right: number
+	bottom: number
+	left: number
+}
+
+/**
+ * Represents a padding box (content + padding area).
+ */
+export type PaddingBoxSize = {
+	width: number
+	height: number
+}
+
+export type PaddingBoxRect = {
+	top: number
+	right: number
+	bottom: number
+	left: number
+}
+
 export type DomHelpers = {
+	// Type guards
 	isHtmlElement: (el: Element | null) => el is HTMLElement
 	isSVGElement: (el: Element | null) => el is SVGElement
 	isRenderableElement: (el: Element | null) => el is HTMLElement | SVGElement
+	isTextNode: (node: ChildNode) => node is Text
+
+	// Visibility checks
 	isVisible: (el: Element, options?: VisibilityOptions) => boolean
 	isVisibleInViewport: (el: Element, options?: VisibilityOptions) => boolean
+
+	// CSS parsing utilities
+	parsePx: (value: string) => number
+	getFontSize: (el: HTMLElement) => number
+
+	// Overflow and clipping utilities
 	isClippingOverflowValue: (value: string) => boolean
+	canScroll: (overflowValue: string) => boolean
 	hasTextOverflowEllipsis: (el: HTMLElement) => boolean
+	isLineClamped: (el: HTMLElement) => boolean
 	isIntentionallyClipped: (el: HTMLElement) => boolean
 	findIntentionallyClippedAncestor: (el: Element) => HTMLElement | null
 	isElementClippedBy: (
@@ -18,6 +55,8 @@ export type DomHelpers = {
 		clippingAncestor: HTMLElement,
 		threshold?: number,
 	) => boolean
+
+	// Size and rect utilities
 	hasRectSize: (rect: DOMRect, minWidth?: number, minHeight?: number) => boolean
 	hasElementRectSize: (
 		el: Element,
@@ -29,12 +68,32 @@ export type DomHelpers = {
 		minWidth?: number,
 		minHeight?: number,
 	) => boolean
-	isTextNode: (node: ChildNode) => node is Text
+	getPaddingBoxSize: (el: HTMLElement) => PaddingBoxSize
+	getPaddingBoxRect: (el: HTMLElement) => PaddingBoxRect
+
+	// Text node utilities
 	getDirectTextNodes: (el: HTMLElement, minTextLength?: number) => Text[]
 	getTextNodeRects: (textNode: Text, minTextLength?: number) => DOMRect[]
 	getTextNodeBounds: (textNode: Text, minTextLength?: number) => DOMRect | null
 	getTextRects: (el: HTMLElement, minTextLength?: number) => DOMRect[]
 	getTextBounds: (el: HTMLElement, minTextLength?: number) => DOMRect | null
+
+	// Overflow calculation utilities
+	getOverflow: (
+		containerRect: DOMRect,
+		contentRect: DOMRect,
+		threshold?: number,
+	) => OverflowBox | null
+	formatOverflow: (overflow: OverflowBox, threshold?: number) => string
+	hasNegativeMargin: (el: HTMLElement) => boolean
+
+	// Layout detection utilities
+	isLayoutContainer: (el: HTMLElement) => boolean
+	isOffscreenPositioned: (el: HTMLElement) => boolean
+
+	// Rect intersection utilities
+	getIntersectionRect: (rectA: DOMRect, rectB: DOMRect) => DOMRect | null
+	getIntersectionArea: (rectA: DOMRect, rectB: DOMRect) => number
 }
 
 /**
@@ -437,25 +496,266 @@ export const createDomHelpers = (): DomHelpers => {
 		return new DOMRect(left, top, right - left, bottom - top)
 	}
 
+	// =========================================================================
+	// NEW SHARED HELPERS
+	// =========================================================================
+
+	/**
+	 * Parse a CSS pixel value to a number. Returns 0 for invalid values.
+	 */
+	const parsePx = (value: string): number => {
+		const parsed = Number.parseFloat(value)
+		return Number.isFinite(parsed) ? parsed : 0
+	}
+
+	/**
+	 * Get the computed font size of an element in pixels.
+	 */
+	const getFontSize = (el: HTMLElement): number => {
+		const style = window.getComputedStyle(el)
+		const parsed = Number.parseFloat(style.fontSize)
+		return Number.isFinite(parsed) ? parsed : 16
+	}
+
+	/**
+	 * Check if an overflow value allows scrolling.
+	 */
+	const canScroll = (overflowValue: string): boolean => {
+		return (
+			overflowValue === "auto" ||
+			overflowValue === "scroll" ||
+			overflowValue === "overlay"
+		)
+	}
+
+	/**
+	 * Check if an element has CSS line-clamp applied.
+	 */
+	const isLineClamped = (el: HTMLElement): boolean => {
+		const style = window.getComputedStyle(el)
+		const raw =
+			style.getPropertyValue("-webkit-line-clamp") ||
+			style.getPropertyValue("line-clamp")
+		const value = raw.trim()
+		if (value.length === 0 || value === "none") return false
+		const parsed = Number.parseFloat(value)
+		return Number.isFinite(parsed) ? parsed > 0 : true
+	}
+
+	/**
+	 * Get the padding box size (border-box minus borders).
+	 */
+	const getPaddingBoxSize = (el: HTMLElement): PaddingBoxSize => {
+		const rect = el.getBoundingClientRect()
+		const style = window.getComputedStyle(el)
+		const borderTop = parsePx(style.borderTopWidth)
+		const borderRight = parsePx(style.borderRightWidth)
+		const borderBottom = parsePx(style.borderBottomWidth)
+		const borderLeft = parsePx(style.borderLeftWidth)
+
+		return {
+			width: Math.max(0, rect.width - borderLeft - borderRight),
+			height: Math.max(0, rect.height - borderTop - borderBottom),
+		}
+	}
+
+	/**
+	 * Get the padding box rect (border-box minus borders) in viewport coordinates.
+	 */
+	const getPaddingBoxRect = (el: HTMLElement): PaddingBoxRect => {
+		const rect = el.getBoundingClientRect()
+		const style = window.getComputedStyle(el)
+		const borderTop = parsePx(style.borderTopWidth)
+		const borderRight = parsePx(style.borderRightWidth)
+		const borderBottom = parsePx(style.borderBottomWidth)
+		const borderLeft = parsePx(style.borderLeftWidth)
+
+		return {
+			top: rect.top + borderTop,
+			right: rect.right - borderRight,
+			bottom: rect.bottom - borderBottom,
+			left: rect.left + borderLeft,
+		}
+	}
+
+	/**
+	 * Calculate overflow amounts of content rect relative to container rect.
+	 * Returns null if no overflow exceeds the threshold.
+	 */
+	const getOverflow = (
+		containerRect: DOMRect,
+		contentRect: DOMRect,
+		threshold = 0,
+	): OverflowBox | null => {
+		const top = Math.max(0, containerRect.top - contentRect.top)
+		const right = Math.max(0, contentRect.right - containerRect.right)
+		const bottom = Math.max(0, contentRect.bottom - containerRect.bottom)
+		const left = Math.max(0, containerRect.left - contentRect.left)
+
+		const hasOverflow =
+			top > threshold ||
+			right > threshold ||
+			bottom > threshold ||
+			left > threshold
+
+		return hasOverflow ? { top, right, bottom, left } : null
+	}
+
+	/**
+	 * Format overflow amounts to a human-readable string.
+	 */
+	const formatOverflow = (overflow: OverflowBox, threshold = 0): string => {
+		const parts: string[] = []
+
+		if (overflow.top > threshold) {
+			parts.push(`${Math.round(overflow.top)}px top`)
+		}
+		if (overflow.right > threshold) {
+			parts.push(`${Math.round(overflow.right)}px right`)
+		}
+		if (overflow.bottom > threshold) {
+			parts.push(`${Math.round(overflow.bottom)}px bottom`)
+		}
+		if (overflow.left > threshold) {
+			parts.push(`${Math.round(overflow.left)}px left`)
+		}
+
+		return parts.join(", ")
+	}
+
+	/**
+	 * Check if an element has any negative margins.
+	 */
+	const hasNegativeMargin = (el: HTMLElement): boolean => {
+		const style = window.getComputedStyle(el)
+		const margins = [
+			parsePx(style.marginTop),
+			parsePx(style.marginRight),
+			parsePx(style.marginBottom),
+			parsePx(style.marginLeft),
+		]
+		return margins.some((m) => m < 0)
+	}
+
+	/**
+	 * Check if an element is a layout container (flex, grid, or has explicit sizing).
+	 */
+	const isLayoutContainer = (el: HTMLElement): boolean => {
+		const style = window.getComputedStyle(el)
+
+		// Flex or grid containers are intentional layout containers
+		if (style.display === "flex" || style.display === "inline-flex") {
+			return true
+		}
+		if (style.display === "grid" || style.display === "inline-grid") {
+			return true
+		}
+
+		// Elements with explicit sizing are intentional containers
+		if (style.width !== "auto" && !style.width.includes("%")) {
+			return true
+		}
+		if (style.maxWidth !== "none") {
+			return true
+		}
+
+		return false
+	}
+
+	/**
+	 * Check if an element is positioned offscreen (e.g., skip links pattern).
+	 */
+	const isOffscreenPositioned = (el: HTMLElement): boolean => {
+		const style = window.getComputedStyle(el)
+		if (style.position !== "absolute" && style.position !== "fixed") {
+			return false
+		}
+
+		const top = parseFloat(style.top)
+		const left = parseFloat(style.left)
+
+		if (!Number.isNaN(top) && top <= -500) return true
+		if (!Number.isNaN(left) && left <= -500) return true
+
+		return false
+	}
+
+	/**
+	 * Get the intersection rectangle of two rects, or null if they don't intersect.
+	 */
+	const getIntersectionRect = (
+		rectA: DOMRect,
+		rectB: DOMRect,
+	): DOMRect | null => {
+		const left = Math.max(rectA.left, rectB.left)
+		const top = Math.max(rectA.top, rectB.top)
+		const right = Math.min(rectA.right, rectB.right)
+		const bottom = Math.min(rectA.bottom, rectB.bottom)
+
+		if (left >= right || top >= bottom) {
+			return null
+		}
+
+		return new DOMRect(left, top, right - left, bottom - top)
+	}
+
+	/**
+	 * Get the area of intersection between two rects.
+	 */
+	const getIntersectionArea = (rectA: DOMRect, rectB: DOMRect): number => {
+		const intersection = getIntersectionRect(rectA, rectB)
+		return intersection ? intersection.width * intersection.height : 0
+	}
+
 	return {
+		// Type guards
 		isHtmlElement,
 		isSVGElement,
 		isRenderableElement,
+		isTextNode,
+
+		// Visibility
 		isVisible,
 		isVisibleInViewport,
+
+		// CSS parsing
+		parsePx,
+		getFontSize,
+
+		// Overflow and clipping
 		isClippingOverflowValue,
+		canScroll,
 		hasTextOverflowEllipsis,
+		isLineClamped,
 		isIntentionallyClipped,
 		findIntentionallyClippedAncestor,
 		isElementClippedBy,
+
+		// Size and rect
 		hasRectSize,
 		hasElementRectSize,
 		hasClientSize,
-		isTextNode,
+		getPaddingBoxSize,
+		getPaddingBoxRect,
+
+		// Text nodes
 		getDirectTextNodes,
 		getTextNodeRects,
 		getTextNodeBounds,
 		getTextRects,
 		getTextBounds,
+
+		// Overflow calculation
+		getOverflow,
+		formatOverflow,
+		hasNegativeMargin,
+
+		// Layout detection
+		isLayoutContainer,
+		isOffscreenPositioned,
+
+		// Rect intersection
+		getIntersectionRect,
+		getIntersectionArea,
 	}
 }

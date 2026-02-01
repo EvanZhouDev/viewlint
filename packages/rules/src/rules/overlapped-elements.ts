@@ -3,7 +3,6 @@ import { getDomHelpersHandle } from "../utils/getDomHelpersHandle.js"
 
 /**
  * Detects elements that overlap unintentionally within the same layout context.
- *
  * - Elements must be visible in the viewport.
  * - Elements positioned absolute/fixed are not candidates.
  * - Overlap is only checked when both elements share the same nearest
@@ -30,32 +29,24 @@ export default defineRule({
 				const MAX_THIN_OVERLAP_PERCENT = 20
 				const MIN_NEGATIVE_MARGIN_OVERLAP_PERCENT = 50
 
-				const isClippingOverflow = (value: string): boolean => {
-					return value === "hidden" || value === "clip"
-				}
-
-				type ClipAncestor = {
-					rect: DOMRect
-					clipsX: boolean
-					clipsY: boolean
-				}
+				type ClipAncestor = { rect: DOMRect; clipsX: boolean; clipsY: boolean }
 
 				const getClippingAncestors = (el: HTMLElement): ClipAncestor[] => {
 					const ancestors: ClipAncestor[] = []
 					let current = el.parentElement
-
 					while (current) {
 						const style = window.getComputedStyle(current)
-						const clipsX = isClippingOverflow(style.overflowX)
-						const clipsY = isClippingOverflow(style.overflowY)
+						const clipsX = domHelpers.isClippingOverflowValue(style.overflowX)
+						const clipsY = domHelpers.isClippingOverflowValue(style.overflowY)
 						if (clipsX || clipsY) {
-							const rect = current.getBoundingClientRect()
-							ancestors.push({ rect, clipsX, clipsY })
+							ancestors.push({
+								rect: current.getBoundingClientRect(),
+								clipsX,
+								clipsY,
+							})
 						}
-
 						current = current.parentElement
 					}
-
 					return ancestors
 				}
 
@@ -63,11 +54,10 @@ export default defineRule({
 					rect: DOMRect,
 					ancestors: ClipAncestor[],
 				): DOMRect | null => {
-					let left = rect.left
-					let right = rect.right
-					let top = rect.top
-					let bottom = rect.bottom
-
+					let left = rect.left,
+						right = rect.right,
+						top = rect.top,
+						bottom = rect.bottom
 					for (const ancestor of ancestors) {
 						if (ancestor.clipsX) {
 							left = Math.max(left, ancestor.rect.left)
@@ -78,34 +68,31 @@ export default defineRule({
 							bottom = Math.min(bottom, ancestor.rect.bottom)
 						}
 					}
-
-					const width = right - left
-					const height = bottom - top
+					const width = right - left,
+						height = bottom - top
 					if (width <= 0 || height <= 0) return null
 					return new DOMRect(left, top, width, height)
 				}
 
 				const getRects = (el: HTMLElement): DOMRect[] => {
 					const clippingAncestors = getClippingAncestors(el)
-					const rects = Array.from(el.getClientRects())
 					const results: DOMRect[] = []
-
-					for (const rect of rects) {
+					for (const rect of el.getClientRects()) {
 						const clipped = clipRectByAncestors(rect, clippingAncestors)
 						if (!clipped) continue
-						if (clipped.width < MIN_ELEMENT_SIZE) continue
-						if (clipped.height < MIN_ELEMENT_SIZE) continue
+						if (
+							clipped.width < MIN_ELEMENT_SIZE ||
+							clipped.height < MIN_ELEMENT_SIZE
+						)
+							continue
 						results.push(clipped)
 					}
-
 					return results
 				}
 
 				const getArea = (rects: DOMRect[]): number => {
 					let total = 0
-					for (const rect of rects) {
-						total += rect.width * rect.height
-					}
+					for (const rect of rects) total += rect.width * rect.height
 					return total
 				}
 
@@ -119,74 +106,45 @@ export default defineRule({
 					)
 				}
 
-				const hasNegativeMargin = (el: HTMLElement): boolean => {
-					const style = window.getComputedStyle(el)
-					const margins = [
-						Number.parseFloat(style.marginTop),
-						Number.parseFloat(style.marginRight),
-						Number.parseFloat(style.marginBottom),
-						Number.parseFloat(style.marginLeft),
-					]
-
-					for (const margin of margins) {
-						if (Number.isFinite(margin) && margin < 0) return true
-					}
-
-					return false
-				}
-
 				const hasTextDescendant = (el: HTMLElement): boolean => {
 					const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
 					let node: Node | null = walker.nextNode()
-
 					while (node) {
-						if (node.textContent && node.textContent.trim().length > 0) {
+						if (node.textContent && node.textContent.trim().length > 0)
 							return true
-						}
 						node = walker.nextNode()
 					}
-
 					return false
 				}
 
 				const isFloatWrapPair = (a: HTMLElement, b: HTMLElement): boolean => {
 					const styleA = window.getComputedStyle(a)
 					const styleB = window.getComputedStyle(b)
-
 					const floatA = styleA.float !== "none"
 					const floatB = styleB.float !== "none"
 					if (floatA === floatB) return false
 					if (a.parentElement !== b.parentElement) return false
 
-					const floatEl = floatA ? a : b
 					const otherEl = floatA ? b : a
 					const otherStyle = floatA ? styleB : styleA
-
 					if (
 						otherStyle.position === "absolute" ||
 						otherStyle.position === "fixed"
-					) {
+					)
 						return false
-					}
 					if (otherStyle.float !== "none") return false
 					if (!hasTextDescendant(otherEl)) return false
-
-					const floatStyle = window.getComputedStyle(floatEl)
-					if (floatStyle.shapeOutside !== "none") return true
 					return true
 				}
 
 				const findLayoutRoot = (el: HTMLElement): HTMLElement | null => {
 					let current = el.parentElement
-
 					while (current) {
 						const style = window.getComputedStyle(current)
-						if (style.position === "absolute" || style.position === "fixed") {
+						if (style.position === "absolute" || style.position === "fixed")
 							return current
-						}
 						current = current.parentElement
 					}
-
 					return null
 				}
 
@@ -204,6 +162,12 @@ export default defineRule({
 					area: number
 					layoutRoot: HTMLElement | null
 				}
+				type OverlapMetrics = {
+					percent: number
+					area: number
+					width: number
+					height: number
+				}
 
 				const candidates: Candidate[] = []
 				const candidateByElement = new Map<HTMLElement, Candidate>()
@@ -211,12 +175,10 @@ export default defineRule({
 				for (const el of scope.queryAll("*")) {
 					if (!domHelpers.isHtmlElement(el)) continue
 					if (!isCandidate(el)) continue
-
 					const rects = getRects(el)
 					if (rects.length === 0) continue
 					const area = getArea(rects)
 					if (area === 0) continue
-
 					const candidate: Candidate = {
 						el,
 						rects,
@@ -227,42 +189,28 @@ export default defineRule({
 					candidateByElement.set(el, candidate)
 				}
 
-				type OverlapMetrics = {
-					percent: number
-					area: number
-					width: number
-					height: number
-				}
-
 				const computeOverlapMetrics = (
 					first: Candidate,
 					second: Candidate,
 				): OverlapMetrics => {
-					let maxOverlapArea = 0
-					let maxOverlapWidth = 0
-					let maxOverlapHeight = 0
+					let maxOverlapArea = 0,
+						maxOverlapWidth = 0,
+						maxOverlapHeight = 0
 					for (const rectA of first.rects) {
 						for (const rectB of second.rects) {
 							if (!rectsOverlap(rectA, rectB)) continue
-							const overlapLeft = Math.max(rectA.left, rectB.left)
-							const overlapRight = Math.min(rectA.right, rectB.right)
-							const overlapTop = Math.max(rectA.top, rectB.top)
-							const overlapBottom = Math.min(rectA.bottom, rectB.bottom)
-							const overlapWidth = Math.max(0, overlapRight - overlapLeft)
-							const overlapHeight = Math.max(0, overlapBottom - overlapTop)
-							const area = overlapWidth * overlapHeight
-
+							const intersection = domHelpers.getIntersectionRect(rectA, rectB)
+							if (!intersection) continue
+							const area = intersection.width * intersection.height
 							if (area > maxOverlapArea) {
 								maxOverlapArea = area
-								maxOverlapWidth = overlapWidth
-								maxOverlapHeight = overlapHeight
+								maxOverlapWidth = intersection.width
+								maxOverlapHeight = intersection.height
 							}
 						}
 					}
-
-					if (maxOverlapArea === 0) {
+					if (maxOverlapArea === 0)
 						return { percent: 0, area: 0, width: 0, height: 0 }
-					}
 					const smallerArea = Math.min(first.area, second.area)
 					if (smallerArea === 0) {
 						return {
@@ -290,9 +238,10 @@ export default defineRule({
 					if (!parentCandidate) return false
 					if (parentCandidate.layoutRoot !== other.layoutRoot) return false
 					if (parentCandidate.el.contains(other.el)) return false
-
-					const overlap = computeOverlapMetrics(parentCandidate, other)
-					return overlap.percent >= MIN_OVERLAP_PERCENT
+					return (
+						computeOverlapMetrics(parentCandidate, other).percent >=
+						MIN_OVERLAP_PERCENT
+					)
 				}
 
 				for (let i = 0; i < candidates.length; i++) {
@@ -302,24 +251,25 @@ export default defineRule({
 					for (let j = i + 1; j < candidates.length; j++) {
 						const b = candidates[j]
 						if (!b) continue
-
 						if (a.layoutRoot !== b.layoutRoot) continue
 						if (a.el.contains(b.el) || b.el.contains(a.el)) continue
 
 						const overlap = computeOverlapMetrics(a, b)
-						if (overlap.percent === 0) continue
 						if (overlap.percent < MIN_OVERLAP_PERCENT) continue
-						if (parentOverlaps(a, b)) continue
-						if (parentOverlaps(b, a)) continue
+						if (parentOverlaps(a, b) || parentOverlaps(b, a)) continue
 						if (isFloatWrapPair(a.el, b.el)) continue
-						if (
+
+						const isThinOverlap =
 							(overlap.width < MIN_THIN_OVERLAP_PX ||
 								overlap.height < MIN_THIN_OVERLAP_PX) &&
 							overlap.percent < MAX_THIN_OVERLAP_PERCENT
-						)
-							continue
+						if (isThinOverlap) continue
+
+						const hasNegMargin =
+							domHelpers.hasNegativeMargin(a.el) ||
+							domHelpers.hasNegativeMargin(b.el)
 						if (
-							(hasNegativeMargin(a.el) || hasNegativeMargin(b.el)) &&
+							hasNegMargin &&
 							overlap.percent < MIN_NEGATIVE_MARGIN_OVERLAP_PERCENT
 						)
 							continue
@@ -328,10 +278,7 @@ export default defineRule({
 							message: `Elements overlap by ${overlap.percent}% of the smaller element's area`,
 							element: a.el,
 							relations: [
-								{
-									description: "Overlapping element",
-									element: b.el,
-								},
+								{ description: "Overlapping element", element: b.el },
 							],
 						})
 					}

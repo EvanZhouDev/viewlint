@@ -3,13 +3,7 @@ import { getDomHelpersHandle } from "../utils/getDomHelpersHandle.js"
 
 /**
  * Detects containers with irregular spacing around their content.
- *
- * Checks containers with a single content block and reports when the
- * empty space around the content is severely asymmetric, indicating
- * potential layout issues or unintentional spacing.
- *
- * Only reports on "leaf-like" containers where the spacing issue is
- * clearly within that element, not explained by sibling layout.
+ * Reports when empty space around content is severely asymmetric.
  */
 export default defineRule({
 	meta: {
@@ -26,124 +20,98 @@ export default defineRule({
 		await context.evaluate(
 			({ report, scope, args: { domHelpers } }) => {
 				void report
-				const MIN_CONTAINER_SIZE = 50
-				// For asymmetric spacing detection
-				const IRREGULARITY_RATIO = 6
-				const MIN_GAP_DIFFERENCE = 40
-				const MIN_LARGE_GAP = 60
-				// For excessive padding detection (content fills less than this % of container)
-				const LOW_FILL_THRESHOLD = 0.25
-				const MIN_WASTED_SPACE = 100
-				// Leaf-like container heuristics
-				const MAX_SIMPLE_CHILDREN = 3
-				const MAX_SIMPLE_AREA_RATIO = 0.3
 
-				const hasMinSize = (rect: DOMRect, minSize: number): boolean => {
-					return rect.width >= minSize && rect.height >= minSize
+				// Thresholds
+				const MIN_CONTAINER_SIZE = 50,
+					MIN_CONTENT_SIZE = 10
+				const IRREGULARITY_RATIO = 6,
+					MIN_GAP_DIFF = 40,
+					MIN_LARGE_GAP = 60
+				const SIBLING_GAP_THRESHOLD = 20,
+					SIBLING_TOLERANCE = 10
+				const LOW_FILL = 0.25,
+					MIN_WASTED = 100,
+					BALANCED_RATIO = 3
+				const MAX_SIMPLE_CHILDREN = 3,
+					MAX_SIMPLE_AREA = 0.3
+				const DOMINANT_CHILD = 0.5,
+					MIN_FILL = 0.2
+
+				type Gaps = {
+					top: number
+					right: number
+					bottom: number
+					left: number
+				}
+				type Filled = {
+					top: boolean
+					right: boolean
+					bottom: boolean
+					left: boolean
 				}
 
-				/**
-				 * Gets the union bounding box of all direct children.
-				 * Returns null if there are no visible children.
-				 */
-				const getDirectChildrenBounds = (
-					container: HTMLElement,
-				): DOMRect | null => {
-					let minLeft = Infinity
-					let minTop = Infinity
-					let maxRight = -Infinity
-					let maxBottom = -Infinity
+				const getChildrenBounds = (container: HTMLElement): DOMRect | null => {
+					let minL = Infinity,
+						minT = Infinity,
+						maxR = -Infinity,
+						maxB = -Infinity
 					let hasContent = false
-
 					for (const child of container.children) {
-						if (!domHelpers.isRenderableElement(child)) continue
-						if (!domHelpers.isVisible(child)) continue
-
-						const rect = child.getBoundingClientRect()
-						if (rect.width === 0 && rect.height === 0) continue
-
+						if (
+							!domHelpers.isRenderableElement(child) ||
+							!domHelpers.isVisible(child)
+						)
+							continue
+						const r = child.getBoundingClientRect()
+						if (!domHelpers.hasRectSize(r)) continue
 						hasContent = true
-						minLeft = Math.min(minLeft, rect.left)
-						minTop = Math.min(minTop, rect.top)
-						maxRight = Math.max(maxRight, rect.right)
-						maxBottom = Math.max(maxBottom, rect.bottom)
+						minL = Math.min(minL, r.left)
+						minT = Math.min(minT, r.top)
+						maxR = Math.max(maxR, r.right)
+						maxB = Math.max(maxB, r.bottom)
 					}
-
-					if (!hasContent) return null
-
-					return new DOMRect(
-						minLeft,
-						minTop,
-						maxRight - minLeft,
-						maxBottom - minTop,
-					)
+					return hasContent
+						? new DOMRect(minL, minT, maxR - minL, maxB - minT)
+						: null
 				}
 
-				/**
-				 * Checks if the container is a "leaf-like" container suitable for analysis.
-				 * Only containers with a single visible child are checked, as multi-child
-				 * containers usually have intentional layout structure.
-				 */
 				const isLeafContainer = (el: HTMLElement): boolean => {
 					const style = window.getComputedStyle(el)
+					if (style.display === "grid") return false
+					const rect = el.getBoundingClientRect()
+					if (!domHelpers.hasRectSize(rect)) return false
 
-					if (style.display === "grid") {
-						return false
-					}
-
-					const containerRect = el.getBoundingClientRect()
-					if (containerRect.width === 0 || containerRect.height === 0) {
-						return false
-					}
-
-					let visibleChildCount = 0
-					let maxChildAreaRatio = 0
-					let totalChildArea = 0
-					const containerArea = containerRect.width * containerRect.height
+					let count = 0,
+						maxRatio = 0,
+						totalArea = 0
+					const containerArea = rect.width * rect.height
 					for (const child of el.children) {
-						if (!domHelpers.isRenderableElement(child)) continue
-						if (!domHelpers.isVisible(child)) continue
-
-						const rect = child.getBoundingClientRect()
-						if (rect.width === 0 && rect.height === 0) continue
-
-						visibleChildCount++
-
-						const childArea = rect.width * rect.height
-						totalChildArea += childArea
-
-						if (containerArea > 0) {
-							maxChildAreaRatio = Math.max(
-								maxChildAreaRatio,
-								childArea / containerArea,
-							)
-						}
+						if (
+							!domHelpers.isRenderableElement(child) ||
+							!domHelpers.isVisible(child)
+						)
+							continue
+						const r = child.getBoundingClientRect()
+						if (!domHelpers.hasRectSize(r)) continue
+						count++
+						const area = r.width * r.height
+						totalArea += area
+						if (containerArea > 0)
+							maxRatio = Math.max(maxRatio, area / containerArea)
 					}
-
-					if (visibleChildCount === 0) return false
-
-					const totalChildAreaRatio =
-						containerArea > 0 ? totalChildArea / containerArea : 0
-
-					if (visibleChildCount <= MAX_SIMPLE_CHILDREN) {
-						return totalChildAreaRatio < MAX_SIMPLE_AREA_RATIO
-					}
-
-					// If there's a dominant child, treat as leaf-like
-					return maxChildAreaRatio >= 0.5
+					if (count === 0) return false
+					const totalRatio = containerArea > 0 ? totalArea / containerArea : 0
+					return count <= MAX_SIMPLE_CHILDREN
+						? totalRatio < MAX_SIMPLE_AREA
+						: maxRatio >= DOMINANT_CHILD
 				}
 
-				/**
-				 * Checks if siblings in the parent container fill the gap regions.
-				 * If a sibling occupies the space where we'd report a "gap", the gap isn't
-				 * actually visually empty - it's intentionally reserved for the sibling.
-				 */
-				const isSiblingFillingGap = (
+				const getSiblingFilled = (
 					container: HTMLElement,
-					containerRect: DOMRect,
-					gaps: { top: number; right: number; bottom: number; left: number },
-				): { top: boolean; right: boolean; bottom: boolean; left: boolean } => {
-					const filled = {
+					cRect: DOMRect,
+					gaps: Gaps,
+				): Filled => {
+					const filled: Filled = {
 						top: false,
 						right: false,
 						bottom: false,
@@ -152,230 +120,173 @@ export default defineRule({
 					const parent = container.parentElement
 					if (!parent) return filled
 
-					// Check each sibling
-					for (const sibling of parent.children) {
-						if (!domHelpers.isRenderableElement(sibling)) continue
-						if (!(sibling instanceof HTMLElement)) continue
-						if (sibling === container) continue
-						if (!domHelpers.isVisible(sibling)) continue
+					for (const sib of parent.children) {
+						if (
+							!domHelpers.isRenderableElement(sib) ||
+							!(sib instanceof HTMLElement)
+						)
+							continue
+						if (sib === container || !domHelpers.isVisible(sib)) continue
+						const s = sib.getBoundingClientRect()
+						if (!domHelpers.hasRectSize(s)) continue
 
-						const siblingRect = sibling.getBoundingClientRect()
-						if (siblingRect.width === 0 && siblingRect.height === 0) continue
+						const hOverlap = s.left < cRect.right && s.right > cRect.left
+						const vOverlap = s.top < cRect.bottom && s.bottom > cRect.top
 
-						// Check if sibling fills the top gap region
-						if (gaps.top > 20) {
-							// Sibling is above container and overlaps horizontally
-							if (
-								siblingRect.bottom <= containerRect.top + 10 &&
-								siblingRect.bottom >= containerRect.top - gaps.top &&
-								siblingRect.left < containerRect.right &&
-								siblingRect.right > containerRect.left
-							) {
-								filled.top = true
-							}
+						if (
+							gaps.top > SIBLING_GAP_THRESHOLD &&
+							hOverlap &&
+							s.bottom <= cRect.top + SIBLING_TOLERANCE &&
+							s.bottom >= cRect.top - gaps.top
+						) {
+							filled.top = true
 						}
-
-						// Check if sibling fills the bottom gap region
-						if (gaps.bottom > 20) {
-							if (
-								siblingRect.top >= containerRect.bottom - 10 &&
-								siblingRect.top <= containerRect.bottom + gaps.bottom &&
-								siblingRect.left < containerRect.right &&
-								siblingRect.right > containerRect.left
-							) {
-								filled.bottom = true
-							}
+						if (
+							gaps.bottom > SIBLING_GAP_THRESHOLD &&
+							hOverlap &&
+							s.top >= cRect.bottom - SIBLING_TOLERANCE &&
+							s.top <= cRect.bottom + gaps.bottom
+						) {
+							filled.bottom = true
 						}
-
-						// Check if sibling fills the left gap region
-						if (gaps.left > 20) {
-							if (
-								siblingRect.right <= containerRect.left + 10 &&
-								siblingRect.right >= containerRect.left - gaps.left &&
-								siblingRect.top < containerRect.bottom &&
-								siblingRect.bottom > containerRect.top
-							) {
-								filled.left = true
-							}
+						if (
+							gaps.left > SIBLING_GAP_THRESHOLD &&
+							vOverlap &&
+							s.right <= cRect.left + SIBLING_TOLERANCE &&
+							s.right >= cRect.left - gaps.left
+						) {
+							filled.left = true
 						}
-
-						// Check if sibling fills the right gap region
-						if (gaps.right > 20) {
-							if (
-								siblingRect.left >= containerRect.right - 10 &&
-								siblingRect.left <= containerRect.right + gaps.right &&
-								siblingRect.top < containerRect.bottom &&
-								siblingRect.bottom > containerRect.top
-							) {
-								filled.right = true
-							}
+						if (
+							gaps.right > SIBLING_GAP_THRESHOLD &&
+							vOverlap &&
+							s.left >= cRect.right - SIBLING_TOLERANCE &&
+							s.left <= cRect.right + gaps.right
+						) {
+							filled.right = true
 						}
 					}
-
 					return filled
 				}
 
-				const analyzeSpacing = (
+				const checkAxis = (
+					gapA: number,
+					gapB: number,
+					sideA: string,
+					sideB: string,
+					filledA: boolean,
+					filledB: boolean,
+				): string | null => {
+					const min = Math.min(gapA, gapB),
+						max = Math.max(gapA, gapB)
+					if (max < MIN_LARGE_GAP || max - min < MIN_GAP_DIFF) return null
+
+					const largeSide = gapA > gapB ? sideA : sideB
+					if (gapA > gapB ? filledA : filledB) return null
+
+					if (min <= 2 && max >= MIN_LARGE_GAP) {
+						const flush = gapA <= 2 ? sideA : sideB
+						const opp = gapA <= 2 ? sideB : sideA
+						return `content is flush with ${flush} edge, ${Math.round(max)}px gap on ${opp}`
+					}
+					if (min > 0) {
+						const ratio = max / min
+						if (ratio < IRREGULARITY_RATIO) return null
+						const smallSide = gapA > gapB ? sideB : sideA
+						return `${largeSide} gap (${Math.round(max)}px) is ${ratio.toFixed(1)}x larger than ${smallSide} (${Math.round(min)}px)`
+					}
+					return null
+				}
+
+				const checkPadding = (
+					fill: number,
+					gapA: number,
+					gapB: number,
+					dim: "horizontal" | "vertical",
+				): string | null => {
+					if (fill >= LOW_FILL) return null
+					const total = gapA + gapB
+					if (total < MIN_WASTED) return null
+					const min = Math.min(gapA, gapB),
+						max = Math.max(gapA, gapB)
+					if (min > 0 && max / min > BALANCED_RATIO) return null
+					return `content fills only ${Math.round(fill * 100)}% of ${dim} space (${Math.round(total)}px unused)`
+				}
+
+				const analyze = (
 					container: HTMLElement,
-					containerRect: DOMRect,
-					contentRect: DOMRect,
-				): { message: string } | null => {
-					const contentFillRatioH = contentRect.width / containerRect.width
-					const contentFillRatioV = contentRect.height / containerRect.height
+					cRect: DOMRect,
+					content: DOMRect,
+				): string | null => {
+					const fillH = content.width / cRect.width
+					const fillV = content.height / cRect.height
+					if (fillH < MIN_FILL && fillV < MIN_FILL) return null
 
-					// Skip if content is very small relative to container in BOTH dimensions
-					// (might be an intentional icon/badge in a large area)
-					if (contentFillRatioH < 0.2 && contentFillRatioV < 0.2) {
-						return null
+					const gaps: Gaps = {
+						top: content.top - cRect.top,
+						right: cRect.right - content.right,
+						bottom: cRect.bottom - content.bottom,
+						left: content.left - cRect.left,
 					}
+					const filled = getSiblingFilled(container, cRect, gaps)
+					const issues: string[] = []
 
-					const gaps = {
-						top: contentRect.top - containerRect.top,
-						right: containerRect.right - contentRect.right,
-						bottom: containerRect.bottom - contentRect.bottom,
-						left: contentRect.left - containerRect.left,
-					}
-
-					// Check if sibling elements fill the gap regions
-					const siblingsFilling = isSiblingFillingGap(
-						container,
-						containerRect,
-						gaps,
-					)
-
-					const checkAxisIrregularity = (
-						gapA: number,
-						gapB: number,
-						sideA: string,
-						sideB: string,
-						sideAFilled: boolean,
-						sideBFilled: boolean,
-					): string | null => {
-						const minGap = Math.min(gapA, gapB)
-						const maxGap = Math.max(gapA, gapB)
-
-						if (maxGap < MIN_LARGE_GAP) return null
-						if (maxGap - minGap < MIN_GAP_DIFFERENCE) return null
-
-						// Determine which side has the large gap
-						const largeGapSide = gapA > gapB ? sideA : sideB
-						const largeGapFilled = gapA > gapB ? sideAFilled : sideBFilled
-
-						// If the large gap is filled by a sibling, it's intentional layout
-						if (largeGapFilled) return null
-
-						if (minGap <= 2 && maxGap >= MIN_LARGE_GAP) {
-							const side = gapA <= 2 ? sideA : sideB
-							const oppositeSide = gapA <= 2 ? sideB : sideA
-							return `content is flush with ${side} edge, ${Math.round(maxGap)}px gap on ${oppositeSide}`
-						}
-
-						if (minGap > 0) {
-							const ratio = maxGap / minGap
-							if (ratio < IRREGULARITY_RATIO) return null
-
-							const smallSide = gapA > gapB ? sideB : sideA
-							return `${largeGapSide} gap (${Math.round(maxGap)}px) is ${ratio.toFixed(1)}x larger than ${smallSide} (${Math.round(minGap)}px)`
-						}
-
-						return null
-					}
-
-					/**
-					 * Check for excessive padding - when content fills very little of the container
-					 * and there's significant wasted space on an axis
-					 */
-					const checkExcessivePadding = (
-						fillRatio: number,
-						gapA: number,
-						gapB: number,
-						dimension: "horizontal" | "vertical",
-					): string | null => {
-						if (fillRatio >= LOW_FILL_THRESHOLD) return null
-
-						const totalGap = gapA + gapB
-						if (totalGap < MIN_WASTED_SPACE) return null
-
-						// Only report if gaps are relatively balanced (otherwise asymmetry check catches it)
-						const minGap = Math.min(gapA, gapB)
-						const maxGap = Math.max(gapA, gapB)
-						if (minGap > 0 && maxGap / minGap > 3) return null
-
-						const fillPercent = Math.round(fillRatio * 100)
-						return `content fills only ${fillPercent}% of ${dimension} space (${Math.round(totalGap)}px unused)`
-					}
-
-					const irregularities: string[] = []
-
-					// Check for asymmetric spacing
-					const hIrregularity = checkAxisIrregularity(
+					const hIssue = checkAxis(
 						gaps.left,
 						gaps.right,
 						"left",
 						"right",
-						siblingsFilling.left,
-						siblingsFilling.right,
+						filled.left,
+						filled.right,
 					)
-					if (hIrregularity) irregularities.push(hIrregularity)
+					if (hIssue) issues.push(hIssue)
 
-					const vIrregularity = checkAxisIrregularity(
+					const vIssue = checkAxis(
 						gaps.top,
 						gaps.bottom,
 						"top",
 						"bottom",
-						siblingsFilling.top,
-						siblingsFilling.bottom,
+						filled.top,
+						filled.bottom,
 					)
-					if (vIrregularity) irregularities.push(vIrregularity)
+					if (vIssue) issues.push(vIssue)
 
-					// Check for excessive padding (symmetric but wasteful)
-					const hExcessive = checkExcessivePadding(
-						contentFillRatioH,
-						gaps.left,
-						gaps.right,
-						"horizontal",
-					)
-					if (hExcessive && !hIrregularity) irregularities.push(hExcessive)
+					const hPad = checkPadding(fillH, gaps.left, gaps.right, "horizontal")
+					if (hPad && !hIssue) issues.push(hPad)
 
-					const vExcessive = checkExcessivePadding(
-						contentFillRatioV,
-						gaps.top,
-						gaps.bottom,
-						"vertical",
-					)
-					if (vExcessive && !vIrregularity) irregularities.push(vExcessive)
+					const vPad = checkPadding(fillV, gaps.top, gaps.bottom, "vertical")
+					if (vPad && !vIssue) issues.push(vPad)
 
-					if (irregularities.length === 0) return null
-
-					return {
-						message: `Irregular spacing: ${irregularities.join("; ")}`,
-					}
+					return issues.length > 0
+						? `Irregular spacing: ${issues.join("; ")}`
+						: null
 				}
 
-				const allElements = scope.queryAll("*")
-
-				for (const el of allElements) {
-					if (!domHelpers.isHtmlElement(el)) continue
-					if (!domHelpers.isVisible(el)) continue
+				for (const el of scope.queryAll("*")) {
+					if (!domHelpers.isHtmlElement(el) || !domHelpers.isVisible(el))
+						continue
 					if (el.children.length === 0) continue
 
-					const containerRect = el.getBoundingClientRect()
-					if (!hasMinSize(containerRect, MIN_CONTAINER_SIZE)) continue
-
+					const cRect = el.getBoundingClientRect()
+					if (
+						!domHelpers.hasRectSize(
+							cRect,
+							MIN_CONTAINER_SIZE,
+							MIN_CONTAINER_SIZE,
+						)
+					)
+						continue
 					if (!isLeafContainer(el)) continue
 
-					const contentRect = getDirectChildrenBounds(el)
-					if (!contentRect) continue
+					const content = getChildrenBounds(el)
+					if (
+						!content ||
+						!domHelpers.hasRectSize(content, MIN_CONTENT_SIZE, MIN_CONTENT_SIZE)
+					)
+						continue
 
-					if (!hasMinSize(contentRect, 10)) continue
-
-					const analysis = analyzeSpacing(el, containerRect, contentRect)
-					if (!analysis) continue
-
-					report({
-						message: analysis.message,
-						element: el,
-					})
+					const msg = analyze(el, cRect, content)
+					if (msg) report({ message: msg, element: el })
 				}
 			},
 			{ domHelpers },

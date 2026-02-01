@@ -23,40 +23,30 @@ export default defineRule({
 				const HORIZONTAL_OVERFLOW_THRESHOLD = 1
 				const VERTICAL_OVERFLOW_RATIO = 0.5
 
-				const hasSize = (el: HTMLElement): boolean => {
-					return domHelpers.hasElementRectSize(el)
-				}
-
-				const hasTextOverflowEllipsis = (el: HTMLElement): boolean => {
-					const style = window.getComputedStyle(el)
-					return style.textOverflow === "ellipsis"
-				}
-
-				const getOverflow = (
-					containerRect: DOMRect,
-					textRect: DOMRect,
+				/**
+				 * Check if overflow exceeds thresholds (different for horizontal/vertical).
+				 */
+				const hasSignificantOverflow = (
+					overflow: {
+						top: number
+						right: number
+						bottom: number
+						left: number
+					},
 					verticalThreshold: number,
-				): {
-					top: number
-					right: number
-					bottom: number
-					left: number
-				} | null => {
-					const top = Math.max(0, containerRect.top - textRect.top)
-					const right = Math.max(0, textRect.right - containerRect.right)
-					const bottom = Math.max(0, textRect.bottom - containerRect.bottom)
-					const left = Math.max(0, containerRect.left - textRect.left)
-
-					const hasOverflow =
-						top > verticalThreshold ||
-						right > HORIZONTAL_OVERFLOW_THRESHOLD ||
-						bottom > verticalThreshold ||
-						left > HORIZONTAL_OVERFLOW_THRESHOLD
-
-					return hasOverflow ? { top, right, bottom, left } : null
+				): boolean => {
+					return (
+						overflow.top > verticalThreshold ||
+						overflow.right > HORIZONTAL_OVERFLOW_THRESHOLD ||
+						overflow.bottom > verticalThreshold ||
+						overflow.left > HORIZONTAL_OVERFLOW_THRESHOLD
+					)
 				}
 
-				const formatOverflow = (
+				/**
+				 * Format overflow with separate horizontal/vertical thresholds.
+				 */
+				const formatOverflowWithThresholds = (
 					overflow: {
 						top: number
 						right: number
@@ -88,37 +78,31 @@ export default defineRule({
 				for (const el of allElements) {
 					if (!domHelpers.isHtmlElement(el)) continue
 					if (!domHelpers.isVisible(el)) continue
-					if (!hasSize(el)) continue
-
-					if (hasTextOverflowEllipsis(el)) continue
+					if (!domHelpers.hasElementRectSize(el)) continue
+					if (domHelpers.hasTextOverflowEllipsis(el)) continue
 
 					const containerRect = el.getBoundingClientRect()
-
 					const textNodes = domHelpers.getDirectTextNodes(el)
 
 					for (const textNode of textNodes) {
 						const textRect = domHelpers.getTextNodeBounds(textNode)
 						if (!textRect) continue
 
-						const style = window.getComputedStyle(el)
-						const fontSize = Number.parseFloat(style.fontSize)
-						const verticalThreshold = Number.isFinite(fontSize)
-							? fontSize * VERTICAL_OVERFLOW_RATIO
-							: 0
+						const fontSize = domHelpers.getFontSize(el)
+						const verticalThreshold = fontSize * VERTICAL_OVERFLOW_RATIO
 
-						const overflow = getOverflow(
-							containerRect,
-							textRect,
-							verticalThreshold,
-						)
+						// Use domHelpers.getOverflow with threshold=0 to get all overflow values,
+						// then apply our custom threshold logic for horizontal vs vertical
+						const overflow = domHelpers.getOverflow(containerRect, textRect, 0)
 						if (!overflow) continue
+						if (!hasSignificantOverflow(overflow, verticalThreshold)) continue
 
 						const textPreview =
 							(textNode.textContent || "").trim().slice(0, 30) +
 							((textNode.textContent || "").length > 30 ? "..." : "")
 
 						report({
-							message: `Text "${textPreview}" overflows container by ${formatOverflow(
+							message: `Text "${textPreview}" overflows container by ${formatOverflowWithThresholds(
 								overflow,
 								verticalThreshold,
 							)}`,
