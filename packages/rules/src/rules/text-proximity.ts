@@ -43,11 +43,6 @@ export default defineRule({
 					return text.trim()
 				}
 
-				const getFontSize = (el: HTMLElement): number => {
-					const style = window.getComputedStyle(el)
-					return parseFloat(style.fontSize) || 16
-				}
-
 				const areHorizontallyAdjacent = (
 					a: DOMRect,
 					b: DOMRect,
@@ -88,7 +83,7 @@ export default defineRule({
 					const textRect = domHelpers.getTextBounds(el, MIN_TEXT_LENGTH)
 					if (!textRect) continue
 
-					const fontSize = getFontSize(el)
+					const fontSize = domHelpers.getFontSize(el)
 					const text = getDirectTextContent(el)
 
 					textElements.push({ el, textRect, fontSize, text })

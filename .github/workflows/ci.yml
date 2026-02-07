@@ -42,7 +42,13 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.2.18
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
       - name: Install dependencies
         run: bun install --frozen-lockfile
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
       - name: Run tests
         run: bun run test

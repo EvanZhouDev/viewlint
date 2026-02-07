@@ -12,8 +12,8 @@
 		"viewlint": "workspace:*"
 	},
 	"scripts": {
-		"test": "vitest run --passWithNoTests",
-		"test:watch": "vitest --watch",
+		"test": "node ../viewlint/scripts/ensure-playwright-browser.mjs && vitest run --passWithNoTests",
+		"test:watch": "node ../viewlint/scripts/ensure-playwright-browser.mjs && vitest --watch",
 		"lint": "biome check .",
 		"typecheck": "tsc --noEmit",
 		"check-types": "tsc --noEmit"
