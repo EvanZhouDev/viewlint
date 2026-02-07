@@ -61,10 +61,18 @@ export async function generateMetadata(
 	if (!page) notFound()
 
 	return {
-		title: page.data.title,
+		title: `${page.data.title} | ViewLint`,
 		description: page.data.description,
 		openGraph: {
-			images: getPageImage(page).url,
+			images: "/og-image.png",
+			title: `${page.data.title} | ViewLint`,
+			description: page.data.description,
+		},
+		twitter: {
+			card: "summary_large_image",
+			images: "/og-image.png",
+			title: `${page.data.title} | ViewLint`,
+			description: page.data.description,
 		},
 	}
 }
