@@ -1,0 +1,76 @@
+---
+title: Core Concepts
+description: How does ViewLint work?
+---
+
+This page contains a high-level overview of some of the core ideas in ViewLint.
+
+## Rules
+
+**Rules** are the core building block of ViewLint. A rule validates if a given rendered output meets a certain expectation, by running Playwright code that reports issues that it finds.
+
+Rules can self-declare to have side effects, which means that when running the rule, the state of the page may change. These rules are handled in a special way by the ViewLint engine.
+
+ViewLint contains built-in rules to help you get started, but you can also make your own custom rules to be added with plugins.
+
+## View
+
+A **View** describes a factory for a state machine that represents the website that you are linting.
+
+When you are running ViewLint, you always run the rules on a View.
+
+There are 3 core parts to a view:
+
+- `setup()`: A function that takes a generic set of `options` which creates a `page`, a `reset()` function, and a `close()` function. It sets up the initial `page` state that represents the **default state**.
+  - `page`: The current Playwright page that represents the state of the state machine
+  - `reset()`: Function called after rules with side-effects are ran. This should restore the page to the **default state** from any arbitrary state
+  - `close()`: Function called after all rules are finished running. This should dispose of any resources used by the View.
+
+Views are defined in the Configuration and may be referred to by name in the CLI.
+
+For example, a View may be called `loggedin`, with the following form:
+
+- `options`: Contains the browser setup, as well as an option to change the username and password used.
+- `setup()`: Creates a Playwright Chromium browser with browser options defined in `options`. Then, it logs in with the username and password passed in from options
+- `reset()`: Calls `page.goto()` restoring the page to the signed in landing page
+- `close()`: Closes the Playwright browser
+
+Note that Views should be treated more like a "function" than a single "state". Instead of `loggedinDashboard` or `loggedinSettings`, you should have a single `loggedin` View with varying `baseUrl` passed in from Options.
+
+See: [Configure Views](/docs/configure-viewlint/configure-views)
+
+## Options
+
+<Callout>
+  Options are *not* the same as "Config". Generally, Config will be used to
+  refer to the global configuration of ViewLint. Options are presets that are
+  passed into the state machine factory of View.
+</Callout>
+
+Options represents a set of presets that are composed and passed into a View. Think of them as named presets.
+
+All Options contain a `context` field which are a set of [BrowserContextOptions](https://playwright.dev/docs/api/class-browser#browser-new-context). This helps ensure some primitives like `baseURL` are defined for the CLI.
+
+Then, Options also have an optional `args` field in which you can pass any data that you think your view needs.
+
+## Scopes
+
+Scopes are a way to lint only part of the Page created by a View.
+
+Scopes are functions that return a set of [Playwright Locators](https://playwright.dev/docs/locators) given some context.
+
+## Targets
+
+Targets are the basic unit that is linted in ViewLint. A target always has a View. A target may also include options and scope.
+
+Whenever you lint anything, you are always linting a target whether you notice it or not. For example, even in the CLI, when you run:
+
+```bash
+npx viewlint https://example.com
+```
+
+You are actually linting with a **Default View** with the URL passed in through `options.context.baseURL`.
+
+## Formatters
+
+You can use custom formatters to customize what you see when output is printed.

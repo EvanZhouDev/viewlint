@@ -2,3 +2,131 @@
 title: Custom Rules Quickstart
 description: Get Started with your Own ViewLint Rules
 ---
+
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+## Do I Need This Rule?
+
+Before you start creating a Custom Rule, first ask yourself whether or not this rule should be developed with ViewLint.
+
+ViewLint rules should ideally meet a few criteria:
+
+- **Cannot be Checked via Code Only**: If your rule can be checked just by looking at the code, it's probably better off in a normal linter like ESLint.
+- **Applicable Across Pages and Browser Configs**: If your rule doesn't apply to all pages of your website, and across mobile/desktop, it's probably better as a Unit Test or normal Playwright test.
+
+However, these are not strict rules, and ViewLint is incredibly flexible and adaptable that you should be able to use it with any setup you need.
+
+## Creating Your First Rule
+
+This page walks you through creating a tiny ViewLint plugin with one rule.
+
+The goal is intentionally simple: report any `<marquee>` tag. You can swap this out for your own design-system checks later.
+
+<Callout>
+Technically this violates the condition that the rule should not be able to be checked via code only, but this is just a simple example to show the rule syntax.
+</Callout>
+
+This tutorial focuses on the core loop:
+
+1. Define a rule
+2. Put it into a plugin
+3. Load the plugin in `viewlint.config.ts`
+4. Run ViewLint
+
+<Steps>
+<Step>
+## Create a rule
+
+Create `no-marquee.ts`:
+
+```ts
+import { defineRule } from "viewlint/plugin";
+
+export default defineRule({
+  meta: {
+    severity: "warn",
+    docs: {
+      description: "Disallow <marquee> elements",
+    },
+  },
+
+  async run({ evaluate }) {
+    await evaluate(({ report, scope }) => {
+      for (const el of scope.queryAll("marquee")) {
+        if (!(el instanceof HTMLElement)) continue;
+        report({
+          message: "Avoid <marquee>. Use modern CSS animations instead.",
+          element: el,
+        });
+      }
+    });
+  },
+});
+```
+
+Let's see what is happening:
+
+- We use the `defineRule` helper to give us type hints. It's optional, but very useful if you're working in TypeScript
+- We include a `meta` field with a default severity and some docs as description
+- The `run` function is what actually executes the rule, and reports issues
+- We use the `evaluate` function passed from `run`, which allows us to switch into the Browser environment
+- We query for marquee elements and run `report` (passed from `evaluate` into Browser environment) on each one
+  - Report takes an `element` and a `message`
+
+</Step>
+
+<Step>
+## Create a plugin
+
+Create `viewlint-plugin-example.ts`:
+
+```ts
+import noMarquee from "./no-marquee";
+
+const plugin = {
+  meta: {
+    name: "viewlint-plugin-example",
+  },
+  rules: {
+    "no-marquee": noMarquee,
+  },
+};
+
+export default plugin;
+```
+</Step>
+
+<Step>
+## Load the plugin in your config
+
+In `viewlint.config.ts`:
+
+```ts
+import { defineConfig } from "viewlint/config";
+import example from "./viewlint-plugin-example";
+
+export default defineConfig({
+  plugins: {
+    example,
+  },
+  rules: {
+    "example/no-marquee": "warn",
+  },
+});
+```
+</Step>
+
+<Step>
+## Run ViewLint
+
+This will now run your rule! Run with `--verbose` to validate that your new rule really is running.
+
+Try on a website with `marquee` to see the error throw.
+
+```bash
+npx viewlint https://example.com
+```
+</Step>
+</Steps>
+
+See [Custom Rules Reference](/docs/create-plugins/custom-rules-reference) for more information.
