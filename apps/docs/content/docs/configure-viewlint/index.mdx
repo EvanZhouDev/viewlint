@@ -1,13 +1,26 @@
 ---
 title: Configure ViewLint
-description: Your first document
+description: Configure Targets, Views, Scopes, and Rules
 ---
 
-Welcome to the docs! You can start writing documents in `/content/docs`.
+ViewLint is designed to be easily configurable and extensible to every use case. You can start with no rules, and build up to only the rules that you need. However, we also provide a built-in bundle of rules that makes it easy to get started with ViewLint and build up to your usecase.
 
-## What is Next?
+ViewLint is primarily configured with a `viewlint.config.ts` file, which contains information about how you want to lint your websites. You can also specify a custom configuration file with the command line.
 
-<Cards>
-  <Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
-</Cards>
+If you used the quick start, you already have a working config. This section explains how it works and how to customize it.
+
+Here are some of the options you can configure in ViewLint. If you are unfamiliar with the terminology or the ViewLint mental model, read more in [Core Concepts](/docs/core-concepts).
+
+- Rules: Pieces of Playwright code that ViewLint Engine runs to detect issues
+- Views: Perform authentication, or take general actions on your page before linting
+- Scope: Change what part of the page you lint
+- Plugins: Third-party plugisn to define rules, languages, and configurations for ViewLint
+
+## Table of Contents
+
+- [Configuration Files](/docs/configure-viewlint/configuration-files)
+- [Configure Rules](/docs/configure-viewlint/configure-rules)
+- [Configure Views](/docs/configure-viewlint/configure-views)
+- [Configure Scope](/docs/configure-viewlint/configure-scope)
+- [Combine Configs](/docs/configure-viewlint/combining-configurations)
+- [Differences from ESLint](/docs/configure-viewlint/differences-from-eslint)

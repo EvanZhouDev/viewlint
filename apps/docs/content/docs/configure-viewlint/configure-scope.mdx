@@ -1,0 +1,85 @@
+---
+title: Configure Scope
+description: Lint only Part of a Website
+---
+
+Scope lets you lint only a part of the page.
+
+It is the "where" of a Target.
+
+By default, ViewLint lints the whole page (`document.body`). Narrowing scope can make linting faster and makes results easier to interpret.
+
+## What is a Scope
+
+A Scope is a function that returns one or more Playwright locators.
+
+Those locators become the "roots" of linting. Rules only search inside those roots.
+
+## One-off scope in CLI
+
+If you just want to focus on a region, use ad-hoc CSS selectors:
+
+```bash
+viewlint https://example.com --selector "#checkout" ".modal"
+```
+
+Each selector adds another root.
+If all selectors resolve to zero elements, ViewLint exits with code `2`.
+
+Tip: if you pass URLs and `--selector`, put the URLs first.
+
+## Reusable scopes in config
+
+For repeatable workflows, define named scopes in `viewlint.config.ts`:
+
+```ts
+import { defineConfig } from "viewlint/config";
+import rules from "@viewlint/rules";
+
+export default defineConfig({
+  plugins: { rules },
+  extends: ["rules/recommended"],
+
+  scopes: {
+    checkout: {
+      getLocator: ({ page }) => page.locator("#checkout"),
+    },
+  },
+});
+```
+
+Then run:
+
+```bash
+viewlint https://example.com --scope checkout
+```
+
+If the named scope resolves to zero elements, ViewLint exits with code `2`.
+
+### Scopes can return multiple roots
+
+If your UI is split across multiple areas, return multiple locators:
+
+```ts
+scopes: {
+	importantStuff: {
+		getLocator: ({ page }) => [
+			page.locator("header"),
+			page.locator("#checkout"),
+		],
+	},
+}
+```
+
+## Composing scopes
+
+You can apply more than one scope in a single run. ViewLint will combine all of their roots.
+
+```bash
+viewlint https://example.com --scope checkout importantStuff
+```
+
+## Scope vs ignoring
+
+- Use scope when you want ViewLint to focus on a region.
+- Use `data-viewlint-ignore` when you want to silence a subtree even when linting the whole page.

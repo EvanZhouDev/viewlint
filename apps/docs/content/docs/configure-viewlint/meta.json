@@ -3,6 +3,8 @@
 		"configuration-files",
 		"configure-rules",
 		"configure-plugins",
+		"configure-views",
+		"configure-scope",
 		"combining-configurations",
 		"differences-from-eslint"
 	],

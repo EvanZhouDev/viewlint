@@ -3,6 +3,7 @@
 		"index",
 		"getting-started",
 		"---Using ViewLint---",
+		"core-concepts",
 		"configure-viewlint",
 		"cli-reference",
 		"mcp-server",

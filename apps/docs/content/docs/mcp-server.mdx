@@ -3,11 +3,71 @@ title: MCP Server Setup
 description: Help Agents write UI with ViewLint
 ---
 
-Welcome to the docs! You can start writing documents in `/content/docs`.
+The ViewLint MCP server lets an AI agent run ViewLint as a tool.
 
-## What is Next?
+It's useful when you want the agent to get fast feedback from the _rendered page_ while it's building UI. Instead of guessing, the agent can lint a URL and use the results to guide its next change.
 
-<Cards>
-  <Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
-</Cards>
+If you are new to MCP, see [their website](https://modelcontextprotocol.io/docs/getting-started/intro) for more information.
+
+## Run the server
+
+The `stdio` MCP server is published as `@viewlint/mcp`.
+
+```bash
+npx @viewlint/mcp@latest
+```
+
+You can also start it from the ViewLint CLI:
+
+```bash
+viewlint --mcp
+```
+
+## Configure your editor
+
+Most MCP-capable editors accept a `command` + `args` configuration.
+
+Example for VS Code (`.vscode/mcp.json`):
+
+```json
+{
+  "servers": {
+    "viewlint": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@viewlint/mcp@latest"]
+    }
+  }
+}
+```
+
+## Tools
+
+### `lint`
+
+Lints one or more URLs with ViewLint.
+
+Required input:
+
+- `urls`: `string[]`
+
+Optional input:
+
+- `configFile`: `string` path to a `viewlint.config.*` file
+- `view`: named view from config
+- `options`: named option layers from config
+- `scopes`: named scopes from config
+- `selectors`: ad-hoc CSS selectors used as scope roots
+- `quiet`: if true, return only error-level messages
+
+When `configFile` is omitted, ViewLint uses config discovery starting from the server’s working directory.
+
+### `get-config`
+
+Discovers and returns the ViewLint config path from the server’s working directory upward.
+
+Input:
+
+- `configFile` (Optional): `string` path if you want to explicitly specify one
+
+Use this tool first when you are unsure which config will be used for linting.

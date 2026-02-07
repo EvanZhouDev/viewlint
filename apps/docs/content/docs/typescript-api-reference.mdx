@@ -3,11 +3,93 @@ title: TypeScript API Reference
 description: Use ViewLint Functionality Directly
 ---
 
-Welcome to the docs! You can start writing documents in `/content/docs`.
+The ViewLint TypeScript API is useful when you want to run ViewLint from a script, build a custom integration, or lint custom Targets programmatically.
 
-## What is Next?
+Since ViewLint is developed natively in TypeScript, the type hints will be particularly helpful when developing.
 
-<Cards>
-  <Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
-</Cards>
+Note that much of this API overlaps with the API from the configuration files, as the CLI and configuration files are powered by this set of APIs under-the-hood.
+
+## `ViewLint`
+
+```ts
+import { ViewLint } from "viewlint";
+```
+
+### `new ViewLint(options?)`
+
+The constructor accepts an `options` object:
+
+- `overrideConfigFile: string | undefined`: Use a specific config file path.
+- `baseConfig: Config | Config[] | undefined`: Applied before the discovered config file.
+- `overrideConfig: Config | Config[] | undefined`: Applied after everything else.
+- `plugins: Record<string, Plugin> | undefined`: Extra plugins (in addition to config).
+
+## Lint targets
+
+```ts
+import { ViewLint } from "viewlint";
+import rules from "@viewlint/rules";
+import { defaultView, defineConfig } from "viewlint/config";
+
+const viewlint = new ViewLint({
+  baseConfig: defineConfig({
+    plugins: { rules },
+    extends: ["rules/recommended"],
+  }),
+});
+
+const results = await viewlint.lintTargets([
+  {
+    view: defaultView,
+    options: {
+      context: {
+        baseURL: "https://example.com",
+      },
+    },
+  },
+]);
+```
+
+The API is very helpful when you want to generate targets dynamically. Note that you _cannot_ use the named configurations directly via their string in your config. However, you are able to import their objects and use them directly. For example:
+
+```ts
+import { ViewLint } from "viewlint";
+import myConfig from "./viewlint.config.ts"
+
+const viewlint = new ViewLint({
+  baseConfig: myConfig,
+});
+
+const results = await viewlint.lintTargets([
+  {
+    view: myConfig.views.loggedin,
+    options: myConfig.options.local,
+  },
+]);
+```
+
+## Format results
+
+ViewLint ships with two built-in formatters: `stylish` and `json`.
+
+```ts
+const formatter = await viewlint.loadFormatter("stylish");
+const output = await formatter.format(results);
+process.stdout.write(output);
+```
+
+## Config helpers
+
+```ts
+import { defineConfig, defineViewFromActions } from "viewlint/config";
+```
+
+See: [Configuration Files](/docs/configure-viewlint/configuration-files) and [Configuring Views](/docs/configure-viewlint/configure-views)
+
+## Rule helper
+
+```ts
+import { defineRule } from "viewlint/plugin";
+```
+
+See: [Custom Rules Reference](/docs/create-plugins/custom-rules-reference)
