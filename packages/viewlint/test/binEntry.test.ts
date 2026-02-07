@@ -55,6 +55,66 @@ describe("runBin", () => {
 		expect(enableDebug).toHaveBeenCalledWith("viewlint*")
 	})
 
+	it("runs remote create-config package when --init is passed", async () => {
+		const { deps, runCli, spawnSync, writeStderr } = createDeps()
+
+		const exitCode = await runBin(["node", "viewlint", "--init"], deps)
+
+		expect(exitCode).toBe(0)
+		expect(writeStderr).toHaveBeenCalledWith(
+			"You can also run this command directly using 'npx @viewlint/create-config@latest'.\n",
+		)
+		expect(spawnSync).toHaveBeenCalledTimes(1)
+		expect(spawnSync).toHaveBeenCalledWith(
+			"npx",
+			["@viewlint/create-config@latest"],
+			{
+				encoding: "utf8",
+				stdio: "inherit",
+			},
+		)
+		expect(runCli).not.toHaveBeenCalled()
+	})
+
+	it("falls back to local create-config CLI when remote init command fails", async () => {
+		const spawnSync = vi
+			.fn()
+			.mockReturnValueOnce({ status: 1 })
+			.mockReturnValueOnce({ status: 0 })
+
+		const { deps, runCli, writeStderr } = createDeps({
+			spawnSync,
+			fileExists: () => true,
+		})
+
+		const exitCode = await runBin(["node", "viewlint", "--init"], deps)
+
+		expect(exitCode).toBe(0)
+		expect(spawnSync).toHaveBeenCalledTimes(2)
+		expect(spawnSync).toHaveBeenNthCalledWith(
+			1,
+			"npx",
+			["@viewlint/create-config@latest"],
+			{
+				encoding: "utf8",
+				stdio: "inherit",
+			},
+		)
+		expect(spawnSync).toHaveBeenNthCalledWith(
+			2,
+			"bun",
+			[expect.stringContaining("packages/create-config/bin/create-config.js")],
+			{
+				encoding: "utf8",
+				stdio: "inherit",
+			},
+		)
+		expect(writeStderr).toHaveBeenCalledWith(
+			expect.stringContaining("Falling back to local create-config CLI"),
+		)
+		expect(runCli).not.toHaveBeenCalled()
+	})
+
 	it("runs remote MCP package when --mcp is passed", async () => {
 		const { deps, runCli, spawnSync, writeStderr } = createDeps()
 
