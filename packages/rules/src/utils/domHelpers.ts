@@ -203,24 +203,22 @@ export const createDomHelpers = (): DomHelpers => {
 
 		const resolveOpacity = (target: Element): number => {
 			let current: Element | null = target
-			let currentOpacity = Number.parseFloat(
-				window.getComputedStyle(current).opacity,
-			)
-			if (!Number.isFinite(currentOpacity)) currentOpacity = 1
+			let effectiveOpacity = 1
 
-			while (current?.parentElement) {
-				const parent: Element = current.parentElement
-				let parentOpacity = Number.parseFloat(
-					window.getComputedStyle(parent).opacity,
+			while (current) {
+				const opacity = Number.parseFloat(
+					window.getComputedStyle(current).opacity,
 				)
-				if (!Number.isFinite(parentOpacity)) parentOpacity = 1
+				const resolvedOpacity = Number.isFinite(opacity) ? opacity : 1
+				effectiveOpacity *= resolvedOpacity
 
-				if (currentOpacity !== parentOpacity) return currentOpacity
-				current = parent
-				currentOpacity = parentOpacity
+				// Early exit if fully transparent
+				if (effectiveOpacity === 0) return 0
+
+				current = current.parentElement
 			}
 
-			return currentOpacity
+			return effectiveOpacity
 		}
 
 		if (resolvedOptions.checkOpacity && resolveOpacity(el) === 0) return false
@@ -375,12 +373,24 @@ export const createDomHelpers = (): DomHelpers => {
 		const rect = el.getBoundingClientRect()
 		const clipRect = clippingAncestor.getBoundingClientRect()
 
-		return (
-			rect.left < clipRect.left - threshold ||
-			rect.top < clipRect.top - threshold ||
-			rect.right > clipRect.right + threshold ||
-			rect.bottom > clipRect.bottom + threshold
-		)
+		const computedStyle = window.getComputedStyle(clippingAncestor)
+		const overflowX = computedStyle.overflowX
+		const overflowY = computedStyle.overflowY
+
+		const clipsHorizontally = overflowX !== "visible"
+		const clipsVertically = overflowY !== "visible"
+
+		const isClippedHorizontally =
+			clipsHorizontally &&
+			(rect.left < clipRect.left - threshold ||
+				rect.right > clipRect.right + threshold)
+
+		const isClippedVertically =
+			clipsVertically &&
+			(rect.top < clipRect.top - threshold ||
+				rect.bottom > clipRect.bottom + threshold)
+
+		return isClippedHorizontally || isClippedVertically
 	}
 
 	const hasRectSize = (rect: DOMRect, minWidth = 1, minHeight = 1): boolean => {
@@ -651,11 +661,19 @@ export const createDomHelpers = (): DomHelpers => {
 			return true
 		}
 
-		// Elements with explicit sizing are intentional containers
-		if (style.width !== "auto" && !style.width.includes("%")) {
+		// Check for explicit max-width constraints
+		if (style.maxWidth !== "none") {
 			return true
 		}
-		if (style.maxWidth !== "none") {
+
+		// Check for explicit height constraints (more reliable than width)
+		const height = style.height
+		if (
+			height &&
+			height !== "auto" &&
+			!height.includes("%") &&
+			parsePx(height) > 0
+		) {
 			return true
 		}
 
