@@ -32,9 +32,9 @@
 		"vitest": "latest"
 	},
 	"scripts": {
-		"test": "vitest run",
-		"test:watch": "vitest --watch",
-		"lint": "eslint . --max-warnings 0",
+		"test": "node ./scripts/ensure-playwright-browser.mjs && vitest run",
+		"test:watch": "node ./scripts/ensure-playwright-browser.mjs && vitest --watch",
+		"lint": "biome check .",
 		"typecheck": "tsc --noEmit",
 		"check-types": "tsc --noEmit"
 	}
