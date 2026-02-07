@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 
+import { sync } from "cross-spawn"
 import debug from "debug"
 import { createDefaultBinDeps, runBin } from "../src/binEntry.js"
 import { runCli } from "../src/cli.js"
-import { sync } from "cross-spawn"
 
 const argv = process.argv
 
