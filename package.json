@@ -23,5 +23,21 @@
 	"workspaces": [
 		"apps/*",
 		"packages/*"
-	]
+	],
+	"author": "EvanZhouDev",
+	"license": "AGPL-3.0-only",
+	"bugs": {
+		"url": "https://github.com/EvanZhouDev/viewlint/issues"
+	},
+	"homepage": "https://viewlint.vercel.app/",
+	"keywords": [
+		"ui",
+		"lint",
+		"mcp",
+		"ai"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/EvanZhouDev/viewlint.git"
+	}
 }

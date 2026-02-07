@@ -1,10 +1,10 @@
 {
 	"name": "@viewlint/mcp",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"description": "MCP server for ViewLint",
 	"type": "module",
 	"bin": {
-		"viewlint-mcp": "./dist/mcp-cli.js"
+		"viewlint-mcp": "dist/mcp-cli.js"
 	},
 	"exports": {
 		".": {
@@ -18,7 +18,8 @@
 	},
 	"files": [
 		"dist",
-		"README.md"
+		"README.md",
+		"LICENSE"
 	],
 	"publishConfig": {
 		"access": "public"
@@ -39,5 +40,21 @@
 		"test": "vitest run --passWithNoTests",
 		"check-types": "tsc --noEmit",
 		"prepack": "npm run build"
+	},
+	"author": "EvanZhouDev",
+	"license": "AGPL-3.0-only",
+	"bugs": {
+		"url": "https://github.com/EvanZhouDev/viewlint/issues"
+	},
+	"homepage": "https://viewlint.vercel.app/",
+	"keywords": [
+		"ui",
+		"lint",
+		"mcp",
+		"ai"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/EvanZhouDev/viewlint.git"
 	}
 }

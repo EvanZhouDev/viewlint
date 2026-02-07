@@ -1,7 +1,7 @@
 {
 	"name": "viewlint",
-	"version": "0.0.1",
-	"description": "UI linting for live websites powered by Playwright",
+	"version": "0.0.2",
+	"description": "Find UI issues on live websites.",
 	"type": "module",
 	"exports": {
 		".": {
@@ -18,11 +18,12 @@
 		}
 	},
 	"bin": {
-		"viewlint": "./dist/bin/viewlint.js"
+		"viewlint": "dist/bin/viewlint.js"
 	},
 	"files": [
 		"dist",
-		"README.md"
+		"README.md",
+		"LICENSE"
 	],
 	"dependencies": {
 		"@types/cross-spawn": "^6.0.6",
@@ -47,5 +48,21 @@
 		"typecheck": "tsc --noEmit",
 		"check-types": "tsc --noEmit",
 		"prepack": "npm run build"
+	},
+	"author": "EvanZhouDev",
+	"license": "AGPL-3.0-only",
+	"bugs": {
+		"url": "https://github.com/EvanZhouDev/viewlint/issues"
+	},
+	"homepage": "https://viewlint.vercel.app/",
+	"keywords": [
+		"ui",
+		"lint",
+		"mcp",
+		"ai"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/EvanZhouDev/viewlint.git"
 	}
 }

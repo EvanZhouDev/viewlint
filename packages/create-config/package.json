@@ -1,9 +1,11 @@
 {
 	"name": "@viewlint/create-config",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"description": "Interactive initializer for ViewLint configuration",
 	"type": "module",
-	"bin": "./bin/create-config.js",
+	"bin": {
+		"create-config": "bin/create-config.js"
+	},
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -32,5 +34,21 @@
 		"check-types": "tsc -p tsconfig.check.json --noEmit",
 		"prepack": "npm run build",
 		"test": "bun test"
+	},
+	"author": "EvanZhouDev",
+	"license": "AGPL-3.0-only",
+	"bugs": {
+		"url": "https://github.com/EvanZhouDev/viewlint/issues"
+	},
+	"homepage": "https://viewlint.vercel.app/",
+	"keywords": [
+		"ui",
+		"lint",
+		"mcp",
+		"ai"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/EvanZhouDev/viewlint.git"
 	}
 }

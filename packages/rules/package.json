@@ -1,7 +1,7 @@
 {
 	"name": "@viewlint/rules",
-	"version": "0.0.1",
-	"description": "Default rule set for ViewLint",
+	"version": "0.0.2",
+	"description": "Built-in web rule set for ViewLint",
 	"type": "module",
 	"exports": {
 		"types": "./dist/index.d.ts",
@@ -9,7 +9,8 @@
 	},
 	"files": [
 		"dist",
-		"README.md"
+		"README.md",
+		"LICENSE"
 	],
 	"publishConfig": {
 		"access": "public"
@@ -32,5 +33,21 @@
 		"typecheck": "tsc --noEmit",
 		"check-types": "tsc --noEmit",
 		"prepack": "npm run build"
+	},
+	"author": "EvanZhouDev",
+	"license": "AGPL-3.0-only",
+	"bugs": {
+		"url": "https://github.com/EvanZhouDev/viewlint/issues"
+	},
+	"homepage": "https://viewlint.vercel.app/",
+	"keywords": [
+		"ui",
+		"lint",
+		"mcp",
+		"ai"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/EvanZhouDev/viewlint.git"
 	}
 }
