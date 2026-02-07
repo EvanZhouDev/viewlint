@@ -1,21 +1,36 @@
 {
 	"name": "@viewlint/rules",
+	"version": "0.0.1",
+	"description": "Default rule set for ViewLint",
 	"type": "module",
 	"exports": {
-		"types": "./src/index.ts",
-		"default": "./src/index.ts"
+		"types": "./dist/index.d.ts",
+		"default": "./dist/index.js"
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"sharp": "^0.34.5",
+		"viewlint": "^0.0.1"
 	},
 	"devDependencies": {
 		"@repo/typescript-config": "workspace:*",
-		"typescript": "latest",
+		"typescript": "5.9.2",
 		"vitest": "3.2.4",
 		"viewlint": "workspace:*"
 	},
 	"scripts": {
+		"build": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && tsc -p tsconfig.build.json",
 		"test": "node ../viewlint/scripts/ensure-playwright-browser.mjs && vitest run --passWithNoTests",
 		"test:watch": "node ../viewlint/scripts/ensure-playwright-browser.mjs && vitest --watch",
 		"lint": "biome check .",
 		"typecheck": "tsc --noEmit",
-		"check-types": "tsc --noEmit"
+		"check-types": "tsc --noEmit",
+		"prepack": "npm run build"
 	}
 }

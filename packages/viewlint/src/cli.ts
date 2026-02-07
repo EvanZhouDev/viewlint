@@ -126,17 +126,27 @@ async function writeOrStdout(
 }
 
 async function readPackageVersion(): Promise<string> {
-	const url = new URL("../package.json", import.meta.url)
-	const raw = await fs.readFile(url, "utf8")
-	const parsed: unknown = JSON.parse(raw)
+	const candidatePaths = [
+		new URL("../package.json", import.meta.url),
+		new URL("../../package.json", import.meta.url),
+	]
 
-	if (!isRecord(parsed) || typeof parsed.version !== "string") {
-		throw new Error(
-			"packages/viewlint/package.json must include a string 'version' field for --version.",
-		)
+	for (const url of candidatePaths) {
+		try {
+			const raw = await fs.readFile(url, "utf8")
+			const parsed: unknown = JSON.parse(raw)
+
+			if (isRecord(parsed) && typeof parsed.version === "string") {
+				return parsed.version
+			}
+		} catch {
+			// Try next candidate.
+		}
 	}
 
-	return parsed.version
+	throw new Error(
+		"packages/viewlint/package.json must include a string 'version' field for --version.",
+	)
 }
 
 function filterResultsForQuietMode(results: LintResult[]): LintResult[] {

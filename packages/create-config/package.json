@@ -1,6 +1,6 @@
 {
 	"name": "@viewlint/create-config",
-	"version": "0.0.0",
+	"version": "0.0.1",
 	"description": "Interactive initializer for ViewLint configuration",
 	"type": "module",
 	"bin": "./bin/create-config.js",
@@ -15,6 +15,9 @@
 		"dist",
 		"README.md"
 	],
+	"publishConfig": {
+		"access": "public"
+	},
 	"dependencies": {
 		"@clack/prompts": "^1.0.0"
 	},
