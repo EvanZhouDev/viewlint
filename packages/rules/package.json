@@ -8,7 +8,7 @@
 	"devDependencies": {
 		"@repo/typescript-config": "workspace:*",
 		"typescript": "latest",
-		"vitest": "latest",
+		"vitest": "3.2.4",
 		"viewlint": "workspace:*"
 	},
 	"scripts": {
