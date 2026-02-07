@@ -24,6 +24,7 @@ viewlint https://example.com --selector "#checkout" ".modal"
 ```
 
 Each selector adds another root.
+If all selectors resolve to zero elements, ViewLint exits with code `2`.
 
 Tip: if you pass URLs and `--selector`, put the URLs first.
 
@@ -52,6 +53,8 @@ Then run:
 ```bash
 viewlint https://example.com --scope checkout
 ```
+
+If the named scope resolves to zero elements, ViewLint exits with code `2`.
 
 ### Scopes can return multiple roots
 

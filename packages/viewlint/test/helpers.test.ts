@@ -186,9 +186,9 @@ describe("deepMerge", () => {
 		})
 
 		it("returns base when override is false", () => {
-			expect(deepMerge<Record<string, number> | false>({ a: 1 }, false)).toEqual(
-				{ a: 1 },
-			)
+			expect(
+				deepMerge<Record<string, number> | false>({ a: 1 }, false),
+			).toEqual({ a: 1 })
 		})
 
 		it("returns override when base is undefined", () => {
@@ -212,9 +212,9 @@ describe("deepMerge", () => {
 		})
 
 		it("returns override when base is false", () => {
-			expect(deepMerge<Record<string, number> | false>(false, { a: 1 })).toEqual(
-				{ a: 1 },
-			)
+			expect(
+				deepMerge<Record<string, number> | false>(false, { a: 1 }),
+			).toEqual({ a: 1 })
 		})
 	})
 

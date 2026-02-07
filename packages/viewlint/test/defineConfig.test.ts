@@ -31,7 +31,9 @@ function createRule(): RuleDefinition {
 // Helper to create a valid View
 function createView(): View {
 	const setup: View["setup"] = async () => {
-		throw new Error("createView setup should not be called in defineConfig tests")
+		throw new Error(
+			"createView setup should not be called in defineConfig tests",
+		)
 	}
 
 	return {

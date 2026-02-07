@@ -1,4 +1,5 @@
 import fs from "node:fs"
+import { fileURLToPath } from "node:url"
 
 type SpawnSyncOptions = {
 	encoding: "utf8"
@@ -27,6 +28,10 @@ type BinDeps = {
 	writeStderr: (text: string) => void
 	fileExists: (filePath: string) => boolean
 }
+
+const LOCAL_MCP_CLI_PATH = fileURLToPath(
+	new URL("../../mcp/src/mcp-cli.ts", import.meta.url),
+)
 
 function isSpawnSyncResult(value: unknown): value is SpawnSyncResult {
 	return typeof value === "object" && value !== null
@@ -63,7 +68,27 @@ export async function runBin(argv: string[], deps: BinDeps): Promise<number> {
 			encoding: "utf8",
 			stdio: "inherit",
 		})
-		return coerceExitCode(result)
+		const remoteExitCode = coerceExitCode(result)
+		if (remoteExitCode === 0) {
+			return 0
+		}
+
+		// In monorepo development, the package may not be published yet.
+		// Fall back to the local MCP entrypoint when available.
+		if (deps.fileExists(LOCAL_MCP_CLI_PATH)) {
+			deps.writeStderr(
+				`Falling back to local MCP CLI at '${LOCAL_MCP_CLI_PATH}'.\n`,
+			)
+
+			const fallback = deps.spawnSync("bun", [LOCAL_MCP_CLI_PATH], {
+				encoding: "utf8",
+				stdio: "inherit",
+			})
+
+			return coerceExitCode(fallback)
+		}
+
+		return remoteExitCode
 	}
 
 	if (argv.includes("--verbose")) {

@@ -24,7 +24,7 @@
 		"vitest": "3.2.4"
 	},
 	"scripts": {
-		"test": "vitest run",
+		"test": "vitest run --passWithNoTests",
 		"check-types": "tsc --noEmit"
 	}
 }

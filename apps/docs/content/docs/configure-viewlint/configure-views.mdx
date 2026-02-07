@@ -191,6 +191,8 @@ Note how we include a `meta.name` property. This is not required, but recommende
 Without `meta.name`, the CLI will use the key value for output formatting.
 
 ```ts
+import { defineConfig } from "viewlint/config";
+
 export default defineConfig({
 	options: {
 		local: {
@@ -222,6 +224,8 @@ export default defineConfig({
 Remember that options are just objects. However, if you want to deep merge options, there exists a shorthand by including an array of options you want:
 
 ```ts
+import { defineConfig } from "viewlint/config";
+
 export default defineConfig({
     options: {
         mobileLocal: [

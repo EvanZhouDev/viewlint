@@ -34,7 +34,7 @@
 	"scripts": {
 		"test": "vitest run",
 		"test:watch": "vitest --watch",
-		"lint": "eslint . --max-warnings 0",
+		"lint": "biome check .",
 		"typecheck": "tsc --noEmit",
 		"check-types": "tsc --noEmit"
 	}

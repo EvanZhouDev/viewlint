@@ -130,6 +130,8 @@ The scope is available for usage passed from both `run` and `context.evaluate`, 
 This scope is defined in the Node environment, and you can access either `roots`, which is an array of the resolved locators from the input Scope, as well as a function `locator` which returns a locator based on a selector, similar to the [Playwright `page.locator()` method](https://playwright.dev/docs/api/class-page#page-locator).
 
 ```ts
+import type { Locator } from "playwright";
+
 export type NodeScope = {
 	roots: Locator[]
 	locator(selector: string): Locator

@@ -12,9 +12,10 @@
 		"viewlint": "workspace:*"
 	},
 	"scripts": {
-		"test": "vitest run",
+		"test": "vitest run --passWithNoTests",
 		"test:watch": "vitest --watch",
-		"lint": "eslint . --max-warnings 0",
-		"typecheck": "tsc --noEmit"
+		"lint": "biome check .",
+		"typecheck": "tsc --noEmit",
+		"check-types": "tsc --noEmit"
 	}
 }

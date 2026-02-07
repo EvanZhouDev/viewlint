@@ -39,7 +39,9 @@ function createSetupOpts(name: string): SetupOpts {
 
 function createView(name: string): View {
 	const setup: View["setup"] = async () => {
-		throw new Error(`View '${name}' setup should not run in resolveOptions tests`)
+		throw new Error(
+			`View '${name}' setup should not run in resolveOptions tests`,
+		)
 	}
 
 	return {

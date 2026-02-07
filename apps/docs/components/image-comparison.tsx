@@ -35,6 +35,7 @@ export function ImageComparison({
 				)}
 			>
 				<div slot="first" className="relative block w-full !m-0">
+					{/* biome-ignore lint/performance/noImgElement: ImgComparisonSlider slots require raw img nodes. */}
 					<img
 						src={beforeSrc}
 						alt={beforeAlt}
@@ -61,6 +62,7 @@ export function ImageComparison({
 					></path>
 				</svg>
 				<div slot="second" className="relative block w-full !m-0">
+					{/* biome-ignore lint/performance/noImgElement: ImgComparisonSlider slots require raw img nodes. */}
 					<img
 						src={afterSrc}
 						alt={afterAlt}
