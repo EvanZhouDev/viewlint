@@ -6,12 +6,20 @@ const withMDX = createMDX()
 const config = {
 	reactStrictMode: true,
 	async rewrites() {
-		return [
-			{
-				source: "/docs/:path*.mdx",
-				destination: "/llms.mdx/docs/:path*",
-			},
-		]
+		return {
+			beforeFiles: [
+				{
+					source: "/",
+					destination: "/docs",
+				},
+			],
+			afterFiles: [
+				{
+					source: "/docs/:path*.mdx",
+					destination: "/llms.mdx/docs/:path*",
+				},
+			],
+		}
 	},
 }
 
