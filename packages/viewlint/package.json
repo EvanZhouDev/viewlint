@@ -1,24 +1,29 @@
 {
 	"name": "viewlint",
-	"version": "0.0.0",
+	"version": "0.0.1",
+	"description": "UI linting for live websites powered by Playwright",
 	"type": "module",
 	"exports": {
 		".": {
-			"types": "./src/index.ts",
-			"default": "./src/index.ts"
+			"types": "./dist/src/index.d.ts",
+			"default": "./dist/src/index.js"
 		},
 		"./config": {
-			"types": "./config/index.ts",
-			"default": "./config/index.ts"
+			"types": "./dist/config/index.d.ts",
+			"default": "./dist/config/index.js"
 		},
 		"./plugin": {
-			"types": "./plugin/index.ts",
-			"default": "./plugin/index.ts"
+			"types": "./dist/plugin/index.d.ts",
+			"default": "./dist/plugin/index.js"
 		}
 	},
 	"bin": {
-		"viewlint": "./bin/viewlint.ts"
+		"viewlint": "./dist/bin/viewlint.js"
 	},
+	"files": [
+		"dist",
+		"README.md"
+	],
 	"dependencies": {
 		"@types/cross-spawn": "^6.0.6",
 		"biome-plugin-no-type-assertion": "^1.0.2",
@@ -26,18 +31,21 @@
 		"commander": "^14.0.2",
 		"cross-spawn": "^7.0.6",
 		"debug": "^4.4.3",
-		"playwright": "^1.57.0"
+		"playwright": "^1.57.0",
+		"zod": "^4.3.5"
 	},
 	"devDependencies": {
 		"@repo/typescript-config": "workspace:*",
-		"typescript": "latest",
+		"typescript": "5.9.2",
 		"vitest": "3.2.4"
 	},
 	"scripts": {
+		"build": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && tsc -p tsconfig.build.json && node -e \"require('node:fs').mkdirSync('dist/src/vendor', { recursive: true }); require('node:fs').copyFileSync('src/vendor/medv.finder.js', 'dist/src/vendor/medv.finder.js'); require('node:fs').chmodSync('dist/bin/viewlint.js', 0o755)\"",
 		"test": "node ./scripts/ensure-playwright-browser.mjs && vitest run",
 		"test:watch": "node ./scripts/ensure-playwright-browser.mjs && vitest --watch",
 		"lint": "biome check .",
 		"typecheck": "tsc --noEmit",
-		"check-types": "tsc --noEmit"
+		"check-types": "tsc --noEmit",
+		"prepack": "npm run build"
 	}
 }
