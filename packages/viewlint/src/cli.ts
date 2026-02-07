@@ -368,8 +368,8 @@ export async function runCli(argv: string[]): Promise<number> {
 	program
 		.optionsGroup("Miscellaneous:")
 		.option("--verbose", "Log progress details to stderr", false)
-		.option("--init", "Run config initialization wizard (coming soon)", false)
-		.option("--mcp", "Start the ViewLint MCP server (coming soon)", false)
+		.option("--init", "Run config initialization wizard", false)
+		.option("--mcp", "Start the ViewLint MCP server", false)
 		.version(version, "-v, --version", "Output the version number")
 		.helpOption("-h, --help", "Show help")
 

@@ -1,0 +1,291 @@
+---
+title: Configure Views
+description: Change the Setup of Your Website
+---
+
+Views tell ViewLint _what_ to lint. At it's simplest form, a View is a function that returns a Playwright page. All ViewLint rules are ran on that page.
+
+## What is a View
+
+![Shows the state machine of a View](/view-state-machine.png)
+
+More accurately, a View is a small state machine factory.
+
+When ViewLint lints a Target, it:
+
+1. Calls `view.setup(options)` to create a Playwright page
+2. Runs rules against that page
+3. If a rule reports to have side effects (scrolling, clicking, DOM mutations), ViewLint calls `reset()` before continuing
+4. When done, ViewLint calls `close()`
+
+In code, a View creates a `ViewInstance`:
+
+- `page`: The Playwright `Page` rules run on
+- `reset()`: Bring the page back to the default state
+- `close()`: Clean up resources (close context/browser)
+
+### Options and Views
+
+Options are per-run inputs passed to `setup()` that tell the View things like:
+
+- what `baseURL` to open
+- what viewport to use
+- whether to load cookies/storage state
+- any custom `args` your View (or Scopes) need
+
+In config, options are defined under `options:` as named presets. On the CLI, you apply them with `--option`.
+
+Options have two properties:
+
+- `context`: A set of playwright [BrowserContextOptions](https://playwright.dev/docs/api/class-browser#browser-new-context), such as `baseURL` and viewport information that describe the browser to open.
+- `args`: An arbitrarily formed object of data to let you pass whatever you need into your View setup.
+
+## Incorporating Views and Options into Config
+
+Because Views and Options are relatively more complex, you have to include View and Option 'presets' in your configuration. Then, you can refer to them when running CLI. We will cover how to author views and options later, but here is what a sample configuration may look like:
+
+```ts
+import { defineConfig, defineViewFromActions } from "viewlint/config";
+import rules from "@viewlint/rules";
+
+export default defineConfig({
+	plugins: { rules },
+	extends: ["rules/recommended"],
+	views: {
+		loggedIn: defineViewFromActions([
+			async ({ page }) => {
+				await page.goto("/");
+				await page.getByRole("link", { name: "Sign in" }).click();
+				await page.getByLabel("Email").fill("you@example.com");
+				await page.getByLabel("Password").fill("password");
+				await page.getByRole("button", { name: "Sign in" }).click();
+			},
+		]),
+	},
+    options: {
+        exampleUrl: {
+            context: {
+                baseURL: "https://example.com"
+            }
+        }
+    }
+});
+```
+
+Then, you can re-use these presets in the CLI:
+
+```bash
+npx viewlint --view loggedIn --option exampleUrl
+```
+
+Now, let's take a look at how Views and Configuration are actually created.
+
+## Creating a Custom View
+
+You can write a custom View when you need full control over your browser and page initialization.
+
+Example:
+
+```ts
+import { chromium } from "playwright";
+import type { SetupOpts, View, ViewInstance } from "viewlint";
+
+export const loggedIn: View = {
+	meta: { name: "loggedIn" },
+	setup: async (opts?: SetupOpts): Promise<ViewInstance> => {
+		const baseURL = opts?.context?.baseURL;
+		if (!baseURL) {
+			throw new Error("expected options.context.baseURL");
+		}
+
+		const browser = await chromium.launch();
+		const context = await browser.newContext(opts?.context);
+		const page = await context.newPage();
+
+		// Put the page into the state you want to lint.
+		await page.getByLabel("Email").fill("you@example.com");
+		await page.getByLabel("Password").fill("password");
+		await page.getByRole("button", { name: "Sign in" }).click();
+		await page.waitForLoadState("networkidle");
+
+		const reset = async (): Promise<void> => {
+			await page.goto(baseURL);
+			await page.waitForLoadState("networkidle");
+		};
+
+		await reset();
+
+		return {
+			page,
+			reset,
+			close: async () => {
+				await context.close();
+				await browser.close();
+			},
+		};
+	},
+};
+```
+
+Take note of a few things in this setup:
+
+- We can name this View in `meta.name`. This is not required, but it helps make logging and debugging easier.
+- We do _not_ hardcode the URL that the view navigates to. Instead, we use `opts.context.baseURL`, which is the recommended pattern for Views.
+- Our reset function does _not_ need to re-login to the page. The same browser instance is used through the different rules, so we just need to navigate back to the page we were on.
+
+In a real project, you could choose to pass credentials through `opts.args` instead of hardcoding them.
+
+## The Default View
+
+If you pass a URL on the CLI, ViewLint uses a `defaultView`.
+
+The default View:
+
+- navigates to `options.context.baseURL`
+- waits for the page to settle (network idle)
+- does no extra setup
+
+It's essentially the simplest, most general View that you can have.
+
+This is why `npx viewlint https://example.com` works out of the box.
+
+In real projects, you will likely need to define your own views. However, you can use the `defineViewFromActions()` helper to make this easier.
+
+## Define View from Actions
+
+For common flows (open modal, open sidebar), use `defineViewFromActions()`:
+
+```ts
+import { defineConfig, defineViewFromActions } from "viewlint/config";
+import rules from "@viewlint/rules";
+
+export default defineConfig({
+	plugins: { rules },
+	extends: ["rules/recommended"],
+	views: {
+		loggedIn: defineViewFromActions([
+            // An array of functions that take `page`
+			async ({ page }) => {
+				await page.goto("/");
+				await page.getByRole("button", { name: "Open Modal" }).click();
+			},
+		]),
+	},
+});
+```
+
+What you get:
+
+- ViewLint automatically runs your actions after navigating to `baseURL`
+- `reset()` re-runs the same steps after re-navigating to `baseURL`, so side-effect rules are safe
+
+Note that `defineViewFromActions` is not always the best choice for every flow. For example, for login or authentication, it is still recommended that you make your own Custom View. As the browser storage is persisted, when `reset()` is called, you will still be logged in, so you may not be able to target the "Sign In" button. If you do want to use the helper still, make sure you handle that case in your actions.
+
+## Defining Options
+
+Options are named presets you can reuse across runs.
+
+They usually contain Playwright context options (like `baseURL` and viewport, see full list [here](https://playwright.dev/docs/api/class-browser#browser-new-context)), and optional custom `args` that can be in any shape.
+
+Note how we include a `meta.name` property. This is not required, but recommended.
+Without `meta.name`, the CLI will use the key value for output formatting.
+
+```ts
+import { defineConfig } from "viewlint/config";
+
+export default defineConfig({
+	options: {
+		local: {
+            meta: {
+                name: "Local URL"
+            },
+			context: { baseURL: "http://localhost:3000" },
+		},
+		mobile: {
+            meta: {
+                name: "Mobile"
+            },
+			context: { viewport: { width: 390, height: 844 } },
+		},
+        myCustomArgs: {
+            meta: {
+                name: "Hello World"
+            },
+            args: {
+                hello: "world"
+            }
+        }
+	},
+});
+```
+
+### Composing options
+
+Remember that options are just objects. However, if you want to deep merge options, there exists a shorthand by including an array of options you want:
+
+```ts
+import { defineConfig } from "viewlint/config";
+
+export default defineConfig({
+    options: {
+        mobileLocal: [
+            {
+                context: {
+                    baseURL: "https://localhost:3000"
+                }
+            },
+            {
+                context: {
+                    viewport: { width: 390, height: 844 }
+                }
+            }
+        ]
+    }
+})
+```
+
+This is particularly helpful if you imported those options from another file and want to compose them.
+
+You can also compose via the CLI. Provide the **key** of the option in the object you want. You can simply include multiple options separated by spaces to compose them.
+
+Example (CLI composition):
+
+```bash
+viewlint --option local mobile --view loggedIn
+```
+
+## URLs, Options, and Views on the CLI
+
+When you include a URL (say, `https://example.com`) directly in the CLI, it is equivalent to including this option **at the end of all your other options** (that is, it overrides all your other options):
+
+```ts
+{
+    context: {
+        baseURL: "https://example.com"
+    }
+}
+```
+
+Here are a few examples of combining explicit URL, views, and options:
+
+Use a View by name:
+
+```bash
+npx viewlint https://example.com --view loggedIn
+```
+
+Use options (no URL required):
+
+```bash
+npx viewlint --option local --view loggedIn
+```
+
+Use options and URL:
+
+```bash
+npx viewlint https://example.com --option mobile --view loggedIn
+```
+
+Note that it is your responsibility to understand what order the options are overriding in. It is generally cleaner to only rely on option composition without explicit URLs with a complicated setup.
+
+Furthermore, it is up to View authors to ensure that they have a `baseURL` if they require it, and throw if they don't have it. `baseURL` existence is not enforced by `viewlint` itself because not all views require it, but if the view initialization fails non-gracefully, ViewLint will error out.

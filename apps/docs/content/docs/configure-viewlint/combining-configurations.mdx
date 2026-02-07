@@ -2,3 +2,70 @@
 title: Combine Configs
 description: Put Together Predefined Configurations
 ---
+
+You rarely want to write a full config from scratch.
+
+Instead, you usually:
+
+1. start from a preset (like `rules/recommended`)
+2. add your own overrides
+
+Since ViewLint configurations are just objects, you can always directly compose objects as you would in JavaScript through the spread operator.
+
+## Extend a preset
+
+The extends keyword can be used to include configuration from a plugin.
+
+In order to use it, you can include the name of the preset like `plugin/preset` as shown below with `@viewlint/rules`. `rules/recommended` is the recommended setup exported from `@viewlint/rules`.
+
+```ts
+import { defineConfig } from "viewlint/config";
+import rules from "@viewlint/rules";
+
+export default defineConfig({
+	plugins: {
+		rules,
+	},
+	extends: ["rules/recommended"],
+});
+```
+
+Note that the `extends` property is only available whe you use `defineConfig`. However, you can always [extend configuration objects directly](#extend-config-objects-directly).
+
+## Override after extending
+
+The latest configuration takes precedence, meaning you can override configurations you've extended.
+
+```ts
+import { defineConfig } from "viewlint/config";
+import rules from "@viewlint/rules";
+
+export default defineConfig({
+	plugins: {
+		rules,
+	},
+	extends: ["rules/recommended"],
+	rules: {
+		"rules/text-contrast": "error",
+		"rules/text-proximity": "off",
+	},
+});
+```
+
+## Extend config objects directly
+
+If you prefer, you can extend the config objects that a plugin exports, through pure JavaScript:
+
+```ts
+import { defineConfig } from "viewlint/config";
+import rules from "@viewlint/rules";
+
+export default defineConfig([
+	rules.configs.recommended,
+	{
+		rules: {
+			"rules/text-contrast": "error",
+		},
+	},
+]);
+```

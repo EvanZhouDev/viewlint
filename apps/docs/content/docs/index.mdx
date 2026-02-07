@@ -10,31 +10,46 @@ ViewLint helps identify issues with your UI, by analyzing the rendered output a 
 
 Built from the start [for coding agents](#built-for-llms), ViewLint accelerates workflows from development to shipping. It's designed to be ready out-of-the-box as well as extensible, making it perfect for individual developers to enterprise organizations.
 
+![A user interface with problematic elements boxed, annotated with the various issues in those elements including text contrast, space misuse, container overflow, and incoherent corner radius.](/viewlint-visualized.png)
+
 ## The UI Linting Problem
 
 In the world of UI, identifying issues with code can only get you so far. Many issues are incredibly difficult if not impossible to catch just by looking at code alone:
 
-* Contents overflowing containers
-* Poor text contrast
-* Obscured hit targets
+- Contents overflowing containers
+- Poor text contrast
+- Obscured hit targets
 
-So instead, ViewLint validates your UI the same way a human does, looking at the raw rendered browser output to identify any potential issues.
+So instead, ViewLint validates your UI the same way a human does, looking at the actual rendered browser output to identify any potential issues.
 
-## Built for LLMs
+### UI's Broken Feedback Loop
 
-LLMs are fantastic at writing code.
-They're not so great at making UI.
+![](/broken-feedback-loop.png)
 
-That's because when programming, they are able to get live feedback from a linter about issues.
-When making UI, they're only choice is to manually inspect the HTML or by taking a screenshot. In both cases, the LLM rarely catches any issues.
+LLMs are fantastic at writing code. They're not so great at making UI.
 
-With ViewLint, we close the feedback loop and allow LLMs to get live feedback on their UIs as well, improving their performance significantly.
+As it turns out, it's because coding agents have a closed feedback loop to validate their code and logic. However, when designing UIs, the agent can only inspect the DOM tree manually or take screenshots, both of which give it weak feedback that doesn't create a strong feedback loop to help it improve its output.
 
-Learn more about integrating ViewLint with LLMs and the performance gains here.
+### ViewLint Closes the Loop
+
+![](/closed-feedback-loop-small.png)
+
+With ViewLint, we close the feedback loop with UI design, and allow the agent to get live feedback on the rendered output of the website it is working on. This significantly improves their UI design performance. Compare the same UI created with and without ViewLint by dragging the slider below.
+
+<ImageComparison
+  beforeSrc="/ui-without-viewlint.png"
+  beforeAlt="Before"
+  beforeLabel="No ViewLint"
+  afterSrc="/ui-with-viewlint.png"
+  afterAlt="After"
+  afterLabel="ViewLint"
+/>
 
 ## Getting Started
 
 <Cards>
-  <Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
+  <Card title="Quick Start" href="/docs/getting-started" />
+  <Card title="Configure ViewLint" href="/docs/configure-viewlint" />
+  <Card title="CLI Reference" href="/docs/cli-reference" />
+  <Card title="Rules Reference" href="/docs/rules-reference" />
 </Cards>

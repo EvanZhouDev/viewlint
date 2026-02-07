@@ -7,9 +7,11 @@
 		"dev": "next dev",
 		"start": "next start",
 		"types:check": "fumadocs-mdx && next typegen && tsc --noEmit",
+		"check-types": "fumadocs-mdx && next typegen && tsc --noEmit",
 		"postinstall": "fumadocs-mdx"
 	},
 	"dependencies": {
+		"@img-comparison-slider/react": "^8.0.2",
 		"fumadocs-core": "16.4.7",
 		"fumadocs-mdx": "14.2.5",
 		"fumadocs-ui": "16.4.7",
