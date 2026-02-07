@@ -124,6 +124,9 @@ export const createDomHelpers = (): DomHelpers => {
 			checkPointerEvents: options.checkPointerEvents ?? false,
 		}
 
+		// Epsilon for opacity comparison to handle floating-point precision
+		const OPACITY_EPSILON = 0.0001
+
 		const parsePx = (value: string): number => {
 			const parsed = Number.parseFloat(value)
 			return Number.isFinite(parsed) ? parsed : Number.NaN
@@ -212,8 +215,8 @@ export const createDomHelpers = (): DomHelpers => {
 				const resolvedOpacity = Number.isFinite(opacity) ? opacity : 1
 				effectiveOpacity *= resolvedOpacity
 
-				// Early exit if fully transparent
-				if (effectiveOpacity === 0) return 0
+				// Early exit if effectively transparent (with small epsilon for precision)
+				if (effectiveOpacity < OPACITY_EPSILON) return 0
 
 				current = current.parentElement
 			}
@@ -221,7 +224,8 @@ export const createDomHelpers = (): DomHelpers => {
 			return effectiveOpacity
 		}
 
-		if (resolvedOptions.checkOpacity && resolveOpacity(el) === 0) return false
+		if (resolvedOptions.checkOpacity && resolveOpacity(el) < OPACITY_EPSILON)
+			return false
 
 		let current: Element | null = el
 
