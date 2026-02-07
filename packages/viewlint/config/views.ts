@@ -10,11 +10,11 @@ export const defineViewFromActions = (
 	maybeActionArr: DefineViewAction | DefineViewAction[],
 	opts?: {
 		name?: string
-	}
+	},
 ): View => {
 	return {
 		meta: {
-			name: opts?.name
+			name: opts?.name,
 		},
 		setup: async (opts?: SetupOpts): Promise<ViewInstance> => {
 			const actions = toArray(maybeActionArr)

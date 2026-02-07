@@ -221,5 +221,5 @@ export function defineConfig(
 	return state.output
 }
 
-export { defaultView, defineViewFromActions } from "./views.js"
 export { findNearestViewlintConfigFile } from "../src/configFile.js"
+export { defaultView, defineViewFromActions } from "./views.js"

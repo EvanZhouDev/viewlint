@@ -6,33 +6,32 @@ import type { LintMessage, LintResult } from "../src/types.js"
 // Helper functions for creating test data
 function createMessage(overrides: Partial<LintMessage> = {}): LintMessage {
 	return {
-		ruleId: "test/rule",
-		severity: "error",
-		message: "Test message",
+		ruleId: overrides.ruleId ?? "test/rule",
+		severity: overrides.severity ?? "error",
+		message: overrides.message ?? "Test message",
 		location: {
 			element: {
-				selector: "div.test",
-				tagName: "div",
-				id: "",
-				classes: ["test"],
+				selector: overrides.location?.element.selector ?? "div.test",
+				tagName: overrides.location?.element.tagName ?? "div",
+				id: overrides.location?.element.id ?? "",
+				classes: overrides.location?.element.classes ?? ["test"],
 			},
 		},
-		relations: [],
-		...overrides,
-	} as LintMessage
+		relations: overrides.relations ?? [],
+	}
 }
 
 function createResult(overrides: Partial<LintResult> = {}): LintResult {
 	return {
-		url: "http://example.com",
-		messages: [],
-		suppressedMessages: [],
-		errorCount: 0,
-		warningCount: 0,
-		infoCount: 0,
-		recommendCount: 0,
-		...overrides,
-	} as LintResult
+		url: overrides.url ?? "http://example.com",
+		target: overrides.target,
+		messages: overrides.messages ?? [],
+		suppressedMessages: overrides.suppressedMessages ?? [],
+		errorCount: overrides.errorCount ?? 0,
+		warningCount: overrides.warningCount ?? 0,
+		infoCount: overrides.infoCount ?? 0,
+		recommendCount: overrides.recommendCount ?? 0,
+	}
 }
 
 describe("formatterFromId", () => {
@@ -88,7 +87,7 @@ describe("formatterFromId", () => {
 			expect(parsed).toEqual(results)
 
 			// Should use 2-space indentation
-			expect(output).toBe(JSON.stringify(results, null, 2) + "\n")
+			expect(output).toBe(`${JSON.stringify(results, null, 2)}\n`)
 		})
 
 		it("outputs complex results as valid JSON", async () => {

@@ -174,15 +174,21 @@ describe("deepMerge", () => {
 		})
 
 		it("returns base when override is 0", () => {
-			expect(deepMerge({ a: 1 }, 0 as unknown as object)).toEqual({ a: 1 })
+			expect(deepMerge<Record<string, number> | 0>({ a: 1 }, 0)).toEqual({
+				a: 1,
+			})
 		})
 
 		it("returns base when override is empty string", () => {
-			expect(deepMerge({ a: 1 }, "" as unknown as object)).toEqual({ a: 1 })
+			expect(deepMerge<Record<string, number> | "">({ a: 1 }, "")).toEqual({
+				a: 1,
+			})
 		})
 
 		it("returns base when override is false", () => {
-			expect(deepMerge({ a: 1 }, false as unknown as object)).toEqual({ a: 1 })
+			expect(
+				deepMerge<Record<string, number> | false>({ a: 1 }, false),
+			).toEqual({ a: 1 })
 		})
 
 		it("returns override when base is undefined", () => {
@@ -194,15 +200,21 @@ describe("deepMerge", () => {
 		})
 
 		it("returns override when base is 0", () => {
-			expect(deepMerge(0 as unknown as object, { a: 1 })).toEqual({ a: 1 })
+			expect(deepMerge<Record<string, number> | 0>(0, { a: 1 })).toEqual({
+				a: 1,
+			})
 		})
 
 		it("returns override when base is empty string", () => {
-			expect(deepMerge("" as unknown as object, { a: 1 })).toEqual({ a: 1 })
+			expect(deepMerge<Record<string, number> | "">("", { a: 1 })).toEqual({
+				a: 1,
+			})
 		})
 
 		it("returns override when base is false", () => {
-			expect(deepMerge(false as unknown as object, { a: 1 })).toEqual({ a: 1 })
+			expect(
+				deepMerge<Record<string, number> | false>(false, { a: 1 }),
+			).toEqual({ a: 1 })
 		})
 	})
 
@@ -308,14 +320,14 @@ describe("deepMerge", () => {
 
 	describe("handles Object.create(null)", () => {
 		it("merges Object.create(null) as plain object", () => {
-			const nullProto = Object.create(null) as Record<string, unknown>
+			const nullProto: Record<string, unknown> = Object.create(null)
 			nullProto.x = 1
 			const result = deepMerge(nullProto, { a: 1 })
 			expect(result).toEqual({ x: 1, a: 1 })
 		})
 
 		it("merges into Object.create(null)", () => {
-			const nullProto = Object.create(null) as Record<string, unknown>
+			const nullProto: Record<string, unknown> = Object.create(null)
 			nullProto.a = 1
 			const result = deepMerge({ x: 1 }, nullProto)
 			expect(result).toEqual({ x: 1, a: 1 })
@@ -324,7 +336,7 @@ describe("deepMerge", () => {
 
 	describe("edge cases", () => {
 		it("handles deeply nested mixed structures", () => {
-			const base = {
+			const base: Record<string, unknown> = {
 				level1: {
 					level2: {
 						arr: [1, 2],
@@ -333,7 +345,7 @@ describe("deepMerge", () => {
 					},
 				},
 			}
-			const override = {
+			const override: Record<string, unknown> = {
 				level1: {
 					level2: {
 						arr: [3],
@@ -342,12 +354,7 @@ describe("deepMerge", () => {
 					},
 				},
 			}
-			expect(
-				deepMerge(
-					base as Record<string, unknown>,
-					override as Record<string, unknown>,
-				),
-			).toEqual({
+			expect(deepMerge(base, override)).toEqual({
 				level1: {
 					level2: {
 						arr: [3],
@@ -362,11 +369,18 @@ describe("deepMerge", () => {
 })
 
 describe("resolveRuleId", () => {
-	// Mock RuleDefinition - we use type assertion since we only need the map keys
+	const createRuleDefinition = (): RuleDefinition => {
+		return {
+			run: async () => {},
+		}
+	}
+
 	const createRegistry = (
 		rules: Record<string, object>,
 	): Map<string, RuleDefinition> => {
-		return new Map(Object.entries(rules)) as Map<string, RuleDefinition>
+		return new Map(
+			Object.keys(rules).map((ruleId) => [ruleId, createRuleDefinition()]),
+		)
 	}
 
 	describe("exact matches", () => {
@@ -472,8 +486,10 @@ describe("resolveRuleId", () => {
 				resolveRuleId("nonexistent", registry)
 				expect.fail("Should have thrown")
 			} catch (e) {
-				const message = (e as Error).message
-				expect(message).toMatch(/Available rules:/)
+				expect(e).toBeInstanceOf(Error)
+				if (e instanceof Error) {
+					expect(e.message).toMatch(/Available rules:/)
+				}
 			}
 		})
 	})

@@ -43,20 +43,31 @@ Example for VS Code (`.vscode/mcp.json`):
 
 ## Tools
 
-### `lint-urls`
+### `lint`
 
-Lints one or more URLs.
+Lints one or more URLs with ViewLint.
 
-This tool is intentionally simple: it always uses the Default View and treats each URL as a Target with `baseURL` set.
+Required input:
 
-Input:
+- `urls`: `string[]`
 
-- Urls (Required): `string[]`
-- ConfigFile (Optional): `string` path to a `viewlint.config.*` file
+Optional input:
+
+- `configFile`: `string` path to a `viewlint.config.*` file
+- `view`: named view from config
+- `options`: named option layers from config
+- `scopes`: named scopes from config
+- `selectors`: ad-hoc CSS selectors used as scope roots
+- `quiet`: if true, return only error-level messages
 
 When `configFile` is omitted, ViewLint uses config discovery starting from the server’s working directory.
 
-Related:
+### `get-config`
 
-- [CLI Reference](/docs/cli-reference)
-- [Configuration Files](/docs/configure-viewlint/configuration-files)
+Discovers and returns the ViewLint config path from the server’s working directory upward.
+
+Input:
+
+- `configFile` (Optional): `string` path if you want to explicitly specify one
+
+Use this tool first when you are unsure which config will be used for linting.

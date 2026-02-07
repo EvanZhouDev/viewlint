@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { defineConfig } from "../config/index.js"
+import type { ConfigWithExtends } from "../config/types.js"
 import type {
 	ConfigObject,
 	Plugin,
@@ -29,19 +30,27 @@ function createRule(): RuleDefinition {
 
 // Helper to create a valid View
 function createView(): View {
+	const setup: View["setup"] = async () => {
+		throw new Error(
+			"createView setup should not be called in defineConfig tests",
+		)
+	}
+
 	return {
-		setup: async () => ({
-			page: {} as any,
-			reset: async () => {},
-			close: async () => {},
-		}),
+		setup,
 	}
 }
 
 // Helper to create a valid Scope
 function createScope(): Scope {
+	const getLocator: Scope["getLocator"] = async () => {
+		throw new Error(
+			"createScope getLocator should not be called in defineConfig tests",
+		)
+	}
+
 	return {
-		getLocator: async () => ({}) as any,
+		getLocator,
 	}
 }
 
@@ -445,25 +454,25 @@ describe("defineConfig", () => {
 
 	describe("Circular Detection", () => {
 		it("detects string reference cycles", () => {
+			const pluginAConfig: ConfigWithExtends = {
+				plugins: {},
+			}
+			const pluginBConfig: ConfigWithExtends = {
+				extends: ["pluginA/config"],
+			}
 			const pluginA = createPlugin({
 				configs: {
-					config: {
-						plugins: {},
-					},
+					config: pluginAConfig,
 				},
 			})
 			// Create a plugin that extends another which extends back
 			const pluginB = createPlugin({
 				configs: {
-					config: {
-						extends: ["pluginA/config"],
-					} as any,
+					config: pluginBConfig,
 				},
 			})
 			// Update pluginA to extend pluginB
-			pluginA.configs!.config = {
-				extends: ["pluginB/config"],
-			} as any
+			pluginAConfig.extends = ["pluginB/config"]
 
 			expect(() =>
 				defineConfig(
@@ -474,15 +483,17 @@ describe("defineConfig", () => {
 		})
 
 		it("shows cycle chain in error message", () => {
+			const pluginAConfig: ConfigWithExtends = {}
+			const pluginBConfig: ConfigWithExtends = {}
 			const pluginA = createPlugin({
-				configs: { config: {} },
+				configs: { config: pluginAConfig },
 			})
 			const pluginB = createPlugin({
-				configs: { config: {} },
+				configs: { config: pluginBConfig },
 			})
 			// A -> B -> A
-			pluginA.configs!.config = { extends: ["pluginB/config"] } as any
-			pluginB.configs!.config = { extends: ["pluginA/config"] } as any
+			pluginAConfig.extends = ["pluginB/config"]
+			pluginBConfig.extends = ["pluginA/config"]
 
 			expect(() =>
 				defineConfig(
@@ -494,15 +505,15 @@ describe("defineConfig", () => {
 
 		it("detects array reference cycles", () => {
 			// Create an array that will be extended recursively as an inline extends element
-			const cyclicArray: any[] = []
+			const cyclicArray: ConfigWithExtends[] = []
 			// The array contains a config that has an extends array containing the same array
 			// This creates: cyclicArray -> config -> extends -> [cyclicArray] -> cyclicArray (cycle!)
 			cyclicArray.push({ rules: { rule: "error" } })
 
 			// Create a config whose extends contains cyclicArray as an inline array element
 			// When the array is processed, it will try to extend itself
-			const wrapperConfig = {
-				extends: [cyclicArray] as any,
+			const wrapperConfig: ConfigWithExtends = {
+				extends: [cyclicArray],
 			}
 			// Now make cyclicArray extend itself indirectly through an inline config
 			cyclicArray.push({ extends: [cyclicArray] })
@@ -519,7 +530,7 @@ describe("defineConfig", () => {
 		})
 
 		it("detects object reference cycles", () => {
-			const config: any = { rules: { rule: "error" } }
+			const config: ConfigWithExtends = { rules: { rule: "error" } }
 			config.extends = [config]
 
 			expect(() => defineConfig(config)).toThrow(
@@ -528,14 +539,18 @@ describe("defineConfig", () => {
 		})
 
 		it("handles complex nested cycles", () => {
-			const pluginA = createPlugin({ configs: { config: {} } })
-			const pluginB = createPlugin({ configs: { config: {} } })
-			const pluginC = createPlugin({ configs: { config: {} } })
+			const pluginAConfig: ConfigWithExtends = {}
+			const pluginBConfig: ConfigWithExtends = {}
+			const pluginCConfig: ConfigWithExtends = {}
+
+			const pluginA = createPlugin({ configs: { config: pluginAConfig } })
+			const pluginB = createPlugin({ configs: { config: pluginBConfig } })
+			const pluginC = createPlugin({ configs: { config: pluginCConfig } })
 
 			// A -> B -> C -> A
-			pluginA.configs!.config = { extends: ["pluginB/config"] } as any
-			pluginB.configs!.config = { extends: ["pluginC/config"] } as any
-			pluginC.configs!.config = { extends: ["pluginA/config"] } as any
+			pluginAConfig.extends = ["pluginB/config"]
+			pluginBConfig.extends = ["pluginC/config"]
+			pluginCConfig.extends = ["pluginA/config"]
 
 			expect(() =>
 				defineConfig(
@@ -546,14 +561,20 @@ describe("defineConfig", () => {
 		})
 
 		it("allows same config to be extended multiple times non-circularly", () => {
+			const pluginAConfig: ConfigWithExtends = {
+				extends: ["shared/shared"],
+			}
+			const pluginBConfig: ConfigWithExtends = {
+				extends: ["shared/shared"],
+			}
 			const sharedPlugin = createPlugin({
 				configs: { shared: { rules: { "shared-rule": "error" } } },
 			})
 			const pluginA = createPlugin({
-				configs: { config: { extends: ["shared/shared"] } as any },
+				configs: { config: pluginAConfig },
 			})
 			const pluginB = createPlugin({
-				configs: { config: { extends: ["shared/shared"] } as any },
+				configs: { config: pluginBConfig },
 			})
 
 			// Both A and B extend shared - this is NOT circular
@@ -690,23 +711,25 @@ describe("defineConfig", () => {
 		})
 
 		it("handles multiple levels of extends", () => {
+			const midConfig: ConfigWithExtends = {
+				extends: ["base/base"],
+				rules: { "mid-rule": "warn" },
+			}
+			const topConfig: ConfigWithExtends = {
+				extends: ["mid/mid"],
+				rules: { "top-rule": "off" },
+			}
 			const basePlugin = createPlugin({
 				configs: { base: { rules: { "base-rule": "error" } } },
 			})
 			const midPlugin = createPlugin({
 				configs: {
-					mid: {
-						extends: ["base/base"],
-						rules: { "mid-rule": "warn" },
-					} as any,
+					mid: midConfig,
 				},
 			})
 			const topPlugin = createPlugin({
 				configs: {
-					top: {
-						extends: ["mid/mid"],
-						rules: { "top-rule": "off" },
-					} as any,
+					top: topConfig,
 				},
 			})
 

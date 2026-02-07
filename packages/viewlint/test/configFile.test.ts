@@ -45,7 +45,10 @@ describe("findNearestViewlintConfigFile", () => {
 			const result = findNearestViewlintConfigFile(tempDir)
 
 			expect(result).toBeDefined()
-			expect(path.isAbsolute(result!)).toBe(true)
+			expect(typeof result).toBe("string")
+			if (typeof result === "string") {
+				expect(path.isAbsolute(result)).toBe(true)
+			}
 		})
 	})
 
@@ -165,9 +168,9 @@ describe("findNearestViewlintConfigFile", () => {
 		})
 
 		it("finds nearest config in middle of tree", () => {
-			const level1 = createDir("level1")
+			createDir("level1")
 			const level2 = createDir("level1", "level2")
-			const level3 = createDir("level1", "level2", "level3")
+			createDir("level1", "level2", "level3")
 			const level4 = createDir("level1", "level2", "level3", "level4")
 
 			createFile(tempDir, "viewlint.config.ts")

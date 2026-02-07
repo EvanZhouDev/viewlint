@@ -34,11 +34,12 @@ describe("defineRule", () => {
 		it("preserves all properties unchanged", () => {
 			const schema = z.object({ key: z.string() })
 			const runFn = async () => {}
+			const defaultOptions: [{ key: string }] = [{ key: "value" }]
 			const rule = {
 				meta: {
 					schema,
 					severity: "warn" as const,
-					defaultOptions: [{ key: "value" }] as [{ key: string }],
+					defaultOptions,
 					docs: {
 						description: "A test rule",
 					},
@@ -154,11 +155,12 @@ describe("defineRule", () => {
 
 		it("accepts rule with all meta fields (requires schema for defaultOptions)", () => {
 			const schema = z.object({ threshold: z.number() })
+			const defaultOptions: [{ threshold: number }] = [{ threshold: 10 }]
 			const rule = {
 				meta: {
 					schema,
 					severity: "warn" as const,
-					defaultOptions: [{ threshold: 10 }] as [{ threshold: number }],
+					defaultOptions,
 					docs: {
 						description: "Complete rule with all fields",
 					},
@@ -244,11 +246,12 @@ describe("defineRule", () => {
 			const schema = z.object({
 				strict: z.boolean().default(false),
 			})
+			const defaultOptions: [{ strict: boolean }] = [{ strict: true }]
 
 			const rule = {
 				meta: {
 					schema,
-					defaultOptions: [{ strict: true }] as [{ strict: boolean }],
+					defaultOptions,
 				},
 				run: async () => {},
 			}
@@ -264,12 +267,13 @@ describe("defineRule", () => {
 			const schema = z.object({
 				strict: z.boolean().default(false),
 			})
+			const defaultOptions: [{ strict: boolean }] = [{ strict: true }]
 
 			const rule = {
 				meta: {
 					schema,
 					severity: "error" as const,
-					defaultOptions: [{ strict: true }] as [{ strict: boolean }],
+					defaultOptions,
 					docs: {
 						description: "Rule with schema and complete meta",
 					},
@@ -312,9 +316,10 @@ describe("defineRule", () => {
 			}
 
 			const result = defineRule(rule)
-			await result.run({} as unknown as Parameters<typeof result.run>[0])
+			await runFn()
 
 			expect(executed).toBe(true)
+			expect(result.run).toBe(runFn)
 		})
 	})
 })
