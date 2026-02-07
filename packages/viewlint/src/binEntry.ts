@@ -1,6 +1,3 @@
-import fs from "node:fs"
-import { fileURLToPath } from "node:url"
-
 type SpawnSyncOptions = {
 	encoding: "utf8"
 	stdio: "inherit"
@@ -26,15 +23,7 @@ type BinDeps = {
 	enableDebug: EnableDebug
 	writeStdout: (text: string) => void
 	writeStderr: (text: string) => void
-	fileExists: (filePath: string) => boolean
 }
-
-const LOCAL_MCP_CLI_PATH = fileURLToPath(
-	new URL("../../mcp/src/mcp-cli.ts", import.meta.url),
-)
-const LOCAL_CREATE_CONFIG_CLI_PATH = fileURLToPath(
-	new URL("../../create-config/bin/create-config.js", import.meta.url),
-)
 
 function isSpawnSyncResult(value: unknown): value is SpawnSyncResult {
 	return typeof value === "object" && value !== null
@@ -47,60 +36,31 @@ function coerceExitCode(result: unknown): number {
 	return result.status
 }
 
-function runNpxCommandWithLocalFallback(opts: {
-	deps: BinDeps
-	packageName: string
-	localCliPath: string
-	localToolName: string
-}): number {
-	opts.deps.writeStderr(
-		`You can also run this command directly using 'npx ${opts.packageName}'.\n`,
-	)
-
-	const result = opts.deps.spawnSync("npx", [opts.packageName], {
-		encoding: "utf8",
-		stdio: "inherit",
-	})
-	const remoteExitCode = coerceExitCode(result)
-	if (remoteExitCode === 0) {
-		return 0
-	}
-
-	if (opts.deps.fileExists(opts.localCliPath)) {
-		opts.deps.writeStderr(
-			`Falling back to local ${opts.localToolName} CLI at '${opts.localCliPath}'.\n`,
-		)
-
-		const fallback = opts.deps.spawnSync("bun", [opts.localCliPath], {
-			encoding: "utf8",
-			stdio: "inherit",
-		})
-
-		return coerceExitCode(fallback)
-	}
-
-	return remoteExitCode
-}
-
 export async function runBin(argv: string[], deps: BinDeps): Promise<number> {
 	// Keep this entrypoint extremely lightweight, similar to ESLint.
 	// We intentionally scan argv for early flags instead of doing full parse.
 	if (argv.includes("--init")) {
-		return runNpxCommandWithLocalFallback({
-			deps,
-			packageName: "@viewlint/create-config@latest",
-			localCliPath: LOCAL_CREATE_CONFIG_CLI_PATH,
-			localToolName: "create-config",
+		deps.writeStderr(
+			"You can also run this command directly using 'npx @viewlint/create-config@latest'.\n",
+		)
+
+		const result = deps.spawnSync("npx", ["@viewlint/create-config@latest"], {
+			encoding: "utf8",
+			stdio: "inherit",
 		})
+		return coerceExitCode(result)
 	}
 
 	if (argv.includes("--mcp")) {
-		return runNpxCommandWithLocalFallback({
-			deps,
-			packageName: "@viewlint/mcp@latest",
-			localCliPath: LOCAL_MCP_CLI_PATH,
-			localToolName: "MCP",
+		deps.writeStderr(
+			"You can also run this command directly using 'npx @viewlint/mcp@latest'.\n",
+		)
+
+		const result = deps.spawnSync("npx", ["@viewlint/mcp@latest"], {
+			encoding: "utf8",
+			stdio: "inherit",
 		})
+		return coerceExitCode(result)
 	}
 
 	if (argv.includes("--verbose")) {
@@ -121,6 +81,5 @@ export function createDefaultBinDeps(opts: {
 		enableDebug: opts.enableDebug,
 		writeStdout: (text) => process.stdout.write(text),
 		writeStderr: (text) => process.stderr.write(text),
-		fileExists: (filePath) => fs.existsSync(filePath),
 	}
 }
