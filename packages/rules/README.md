@@ -1,5 +1,7 @@
 # @viewlint/rules
 
+[GitHub](https://github.com/EvanZhouDev/viewlint) | [Documentation](https://viewlint.vercel.app/docs)
+
 `@viewlint/rules` is the official first-party rules plugin for ViewLint.
 
 It ships built-in UI lint rules and two ready-to-use presets: `rules/recommended` and `rules/all`.

@@ -1,5 +1,7 @@
 # @viewlint/mcp
 
+[GitHub](https://github.com/EvanZhouDev/viewlint) | [Documentation](https://viewlint.vercel.app/docs)
+
 `@viewlint/mcp` is the Model Context Protocol (MCP) server for ViewLint.
 
 It lets MCP-capable editors and agents run ViewLint as tools, so they can get feedback from rendered UI while making changes.

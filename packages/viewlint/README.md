@@ -1,6 +1,6 @@
 # viewlint
 
-[GitHub](https://github.com/EvanZhouDev/viewlint) | [Documentation](https://viewlint.vercel.app/#viewlint-closes-the-loop)
+[GitHub](https://github.com/EvanZhouDev/viewlint) | [Documentation](https://viewlint.vercel.app/docs)
 
 `viewlint` is the core ViewLint package. It provides the `viewlint` CLI and the `ViewLint` class for programmatic linting.
 

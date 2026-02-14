@@ -1,5 +1,7 @@
 # @viewlint/create-config
 
+[GitHub](https://github.com/EvanZhouDev/viewlint) | [Documentation](https://viewlint.vercel.app/docs)
+
 `@viewlint/create-config` is the interactive initializer for ViewLint configuration files.
 
 ## Usage
