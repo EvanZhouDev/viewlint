@@ -1,36 +1,70 @@
 import { describe, expect, it } from "vitest"
 import { z } from "zod"
 import { resolveOptions } from "../src/resolveOptions.js"
+import type {
+	Options,
+	Plugin,
+	RuleDefinition,
+	RuleSchema,
+	Scope,
+	SetupOpts,
+	View,
+} from "../src/types.js"
 
-// Helper to create a minimal rule - uses type assertion since we're testing
-// behavior, not types
 function createRule(overrides?: {
 	schema?: z.ZodTypeAny | ReadonlyArray<z.ZodTypeAny>
 	defaultOptions?: unknown[]
 	severity?: "warn" | "error" | "info"
-}) {
+}): RuleDefinition<RuleSchema | undefined> {
 	return {
 		meta: overrides ? { ...overrides } : undefined,
-		create: async () => {},
 		run: async () => {},
 	}
 }
 
-type AnyRule = ReturnType<typeof createRule>
-type AnyPlugin = { rules: Record<string, AnyRule> }
-
 // Helper to create a plugin with rules
-function createPlugin(rules: Record<string, AnyRule>): AnyPlugin {
+function createPlugin(
+	rules: Record<string, RuleDefinition<RuleSchema | undefined>>,
+): Plugin {
 	return { rules }
 }
 
-// Cast helper for resolveOptions input to avoid type strictness issues in tests
-function testResolve(options: {
-	plugins?: Record<string, AnyPlugin>
-	baseConfig?: unknown
-	overrideConfig?: unknown
-}) {
-	return resolveOptions(options as Parameters<typeof resolveOptions>[0])
+function createSetupOpts(name: string): SetupOpts {
+	return {
+		meta: {
+			name,
+		},
+	}
+}
+
+function createView(name: string): View {
+	const setup: View["setup"] = async () => {
+		throw new Error(
+			`View '${name}' setup should not run in resolveOptions tests`,
+		)
+	}
+
+	return {
+		meta: { name },
+		setup,
+	}
+}
+
+function createScope(name: string): Scope {
+	const getLocator: Scope["getLocator"] = async () => {
+		throw new Error(
+			`Scope '${name}' getLocator should not run in resolveOptions tests`,
+		)
+	}
+
+	return {
+		meta: { name },
+		getLocator,
+	}
+}
+
+function testResolve(options: Options) {
+	return resolveOptions(options)
 }
 
 describe("resolveOptions", () => {
@@ -167,7 +201,10 @@ describe("resolveOptions", () => {
 				testResolve({
 					plugins: { "my-plugin": plugin },
 					baseConfig: {
-						rules: { "my-plugin/my-rule": undefined as any },
+						rules: {
+							// @ts-expect-error runtime validation should reject undefined rule settings
+							"my-plugin/my-rule": undefined,
+						},
 					},
 				}),
 			).toThrow(
@@ -589,22 +626,23 @@ describe("resolveOptions", () => {
 
 	describe("Options/Views/Scopes Registries", () => {
 		it("collects options from config objects", () => {
+			const setupA = createSetupOpts("setup-a")
 			const result = testResolve({
 				baseConfig: {
 					options: {
-						"setup-a": { key: "value-a" },
+						"setup-a": setupA,
 					},
 				},
 			})
 
-			expect(result.optionsRegistry.get("setup-a")).toEqual({ key: "value-a" })
+			expect(result.optionsRegistry.get("setup-a")).toEqual(setupA)
 		})
 
 		it("collects views from config objects", () => {
-			const view = { type: "test-view" }
+			const view = createView("view-a")
 			const result = testResolve({
 				baseConfig: {
-					views: { "view-a": view as any },
+					views: { "view-a": view },
 				},
 			})
 
@@ -612,10 +650,10 @@ describe("resolveOptions", () => {
 		})
 
 		it("collects scopes from config objects", () => {
-			const scope = { pattern: "*.ts" }
+			const scope = createScope("scope-a")
 			const result = testResolve({
 				baseConfig: {
-					scopes: { "scope-a": scope as any },
+					scopes: { "scope-a": scope },
 				},
 			})
 
@@ -623,23 +661,25 @@ describe("resolveOptions", () => {
 		})
 
 		it("later options values override earlier ones", () => {
+			const setupV1 = createSetupOpts("version-1")
+			const setupV2 = createSetupOpts("version-2")
 			const result = testResolve({
 				baseConfig: [
-					{ options: { "setup-a": { version: 1 } } },
-					{ options: { "setup-a": { version: 2 } } },
+					{ options: { "setup-a": setupV1 } },
+					{ options: { "setup-a": setupV2 } },
 				],
 			})
 
-			expect(result.optionsRegistry.get("setup-a")).toEqual({ version: 2 })
+			expect(result.optionsRegistry.get("setup-a")).toEqual(setupV2)
 		})
 
 		it("later views values override earlier ones", () => {
-			const view1 = { type: "v1" }
-			const view2 = { type: "v2" }
+			const view1 = createView("view-v1")
+			const view2 = createView("view-v2")
 			const result = testResolve({
 				baseConfig: [
-					{ views: { "my-view": view1 as any } },
-					{ views: { "my-view": view2 as any } },
+					{ views: { "my-view": view1 } },
+					{ views: { "my-view": view2 } },
 				],
 			})
 
@@ -647,12 +687,12 @@ describe("resolveOptions", () => {
 		})
 
 		it("later scopes values override earlier ones", () => {
-			const scope1 = { pattern: "*.ts" }
-			const scope2 = { pattern: "*.tsx" }
+			const scope1 = createScope("scope-ts")
+			const scope2 = createScope("scope-tsx")
 			const result = testResolve({
 				baseConfig: [
-					{ scopes: { "my-scope": scope1 as any } },
-					{ scopes: { "my-scope": scope2 as any } },
+					{ scopes: { "my-scope": scope1 } },
+					{ scopes: { "my-scope": scope2 } },
 				],
 			})
 
@@ -660,10 +700,13 @@ describe("resolveOptions", () => {
 		})
 
 		it("supports array values for options", () => {
-			const opts = [{ a: 1 }, { b: 2 }]
+			const opts: SetupOpts[] = [
+				createSetupOpts("multi-setup-1"),
+				createSetupOpts("multi-setup-2"),
+			]
 			const result = testResolve({
 				baseConfig: {
-					options: { "multi-setup": opts as any },
+					options: { "multi-setup": opts },
 				},
 			})
 
@@ -671,10 +714,13 @@ describe("resolveOptions", () => {
 		})
 
 		it("supports array values for scopes", () => {
-			const scopes = [{ pattern: "*.ts" }, { pattern: "*.tsx" }]
+			const scopes: Scope[] = [
+				createScope("multi-scope-1"),
+				createScope("multi-scope-2"),
+			]
 			const result = testResolve({
 				baseConfig: {
-					scopes: { "multi-scope": scopes as any },
+					scopes: { "multi-scope": scopes },
 				},
 			})
 
@@ -825,8 +871,9 @@ describe("resolveOptions", () => {
 				}),
 			})
 
-			const view = { type: "test" }
-			const scope = { pattern: "**/*.ts" }
+			const view = createView("view-1")
+			const scope = createScope("scope-1")
+			const setup = createSetupOpts("setup-1")
 
 			const result = testResolve({
 				plugins: { "my-plugin": plugin },
@@ -836,9 +883,9 @@ describe("resolveOptions", () => {
 							"my-plugin/rule-a": "inherit",
 							"my-plugin/rule-b": ["error", "hello"],
 						},
-						options: { "setup-1": { foo: "bar" } },
-						views: { "view-1": view as any },
-						scopes: { "scope-1": scope as any },
+						options: { "setup-1": setup },
+						views: { "view-1": view },
+						scopes: { "scope-1": scope },
 					},
 				],
 				overrideConfig: {
@@ -866,16 +913,16 @@ describe("resolveOptions", () => {
 			})
 
 			// Options, views, scopes collected
-			expect(result.optionsRegistry.get("setup-1")).toEqual({ foo: "bar" })
+			expect(result.optionsRegistry.get("setup-1")).toEqual(setup)
 			expect(result.viewRegistry.get("view-1")).toBe(view)
 			expect(result.scopeRegistry.get("scope-1")).toBe(scope)
 		})
 
 		it("handles plugins without rules field", () => {
-			const emptyPlugin = {}
+			const emptyPlugin: Plugin = {}
 
 			const result = testResolve({
-				plugins: { "empty-plugin": emptyPlugin as any },
+				plugins: { "empty-plugin": emptyPlugin },
 			})
 
 			expect(result.plugins.get("empty-plugin")).toBe(emptyPlugin)
@@ -885,7 +932,6 @@ describe("resolveOptions", () => {
 		it("handles rule with empty meta", () => {
 			const rule = {
 				meta: {},
-				create: async () => {},
 				run: async () => {},
 			}
 			const plugin = createPlugin({ "my-rule": rule })

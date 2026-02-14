@@ -3,11 +3,42 @@ title: Ways to Extend ViewLint
 description: Modify ViewLint with Custom Plugins, Rules, and Configs
 ---
 
-Welcome to the docs! You can start writing documents in `/content/docs`.
+There are a few common ways teams extend ViewLint.
 
-## What is Next?
+The best path depends on what you are trying to do: tune what checks run, add new checks, or integrate ViewLint into a bigger workflow.
 
-<Cards>
-  <Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
-</Cards>
+## Customize your config
+
+This includes:
+
+- Turning rules on/off
+- Integrating pre-built plugins or rules
+- Add named Option layers, Scopes, and Views.
+
+Links:
+
+- [Configure ViewLint](/docs/configure-viewlint)
+- [Configure Rules](/docs/configure-viewlint/configure-rules)
+- [Configure Views](/docs/configure-viewlint/configure-views)
+- [Configure Scope](/docs/configure-viewlint/configure-scope)
+
+## Write a plugin (Custom Rules + Presets)
+
+If you need checks that are specific to your UI or design system, you'll need to create a plugin.
+
+Links:
+
+- [Create Plugins](/docs/create-plugins)
+- [Custom Rules Quickstart](/docs/create-plugins/custom-rules-quickstart)
+
+## Build a Custom Workflow
+
+If you want to run ViewLint programmatically (CI pipelines, custom tooling, and scripts), you'll need to use the TypeScript API.
+
+Link: [TypeScript API Reference](/docs/typescript-api-reference)
+
+## Use the MCP server
+
+If you want an Agent to run ViewLint easily as a tool, use the MCP server.
+
+Link: [MCP Server Setup](/docs/mcp-server)

@@ -1,14 +1,5 @@
 {
 	"name": "viewlint",
-	"private": true,
-	"scripts": {
-		"build": "turbo run build",
-		"dev": "turbo run dev",
-		"check-types": "turbo run check-types",
-		"format-and-lint": "biome check",
-		"format-and-lint:fix": "biome check --write",
-		"viewlint": "bun packages/viewlint/bin/viewlint.ts"
-	},
 	"devDependencies": {
 		"@biomejs/biome": "2.3.11",
 		"prettier": "^3.7.4",
@@ -19,8 +10,34 @@
 		"node": ">=18"
 	},
 	"packageManager": "bun@1.2.18",
+	"private": true,
+	"scripts": {
+		"build": "turbo run build",
+		"dev": "turbo run dev",
+		"check-types": "turbo run check-types",
+		"test": "turbo run test",
+		"format-and-lint": "biome check",
+		"format-and-lint:fix": "biome check --write",
+		"viewlint": "bun packages/viewlint/bin/viewlint.ts"
+	},
 	"workspaces": [
 		"apps/*",
 		"packages/*"
-	]
+	],
+	"author": "EvanZhouDev",
+	"license": "AGPL-3.0-only",
+	"bugs": {
+		"url": "https://github.com/EvanZhouDev/viewlint/issues"
+	},
+	"homepage": "https://viewlint.vercel.app/",
+	"keywords": [
+		"ui",
+		"lint",
+		"mcp",
+		"ai"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/EvanZhouDev/viewlint.git"
+	}
 }

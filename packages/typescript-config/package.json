@@ -1,8 +1,11 @@
 {
 	"name": "@repo/typescript-config",
-	"version": "0.0.0",
+	"version": "0.0.1",
 	"private": true,
 	"license": "MIT",
+	"scripts": {
+		"build": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true }); require('node:fs').mkdirSync('dist', { recursive: true }); require('node:fs').writeFileSync('dist/build.txt', 'No build output required for @repo/typescript-config\\n')\""
+	},
 	"publishConfig": {
 		"access": "public"
 	}

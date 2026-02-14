@@ -2,6 +2,12 @@ import sharp from "sharp"
 import { defineRule } from "viewlint/plugin"
 import { getDomHelpersHandle } from "../utils/getDomHelpersHandle.js"
 
+declare global {
+	interface Window {
+		__viewlint_finder?: (el: Element) => string
+	}
+}
+
 /**
  * Detects text with low contrast against its background.
  *

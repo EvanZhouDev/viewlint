@@ -2,3 +2,203 @@
 title: Custom Rules Reference
 description: Full Custom ViewLint Rules Documentation
 ---
+
+This page documents the custom rule API.
+
+If you want a step-by-step tutorial first, see [Custom Rules Quickstart](/docs/create-plugins/custom-rules-quickstart).
+
+## Rule shape
+
+A rule is an object with a `run()` function and an optional `meta` field:
+
+```ts
+import type { RuleDefinition } from "viewlint";
+
+export const myRule: RuleDefinition = {
+	meta: {
+		severity: "warn",
+	},
+	async run(context) {
+		// ...
+	},
+};
+```
+
+You'll usually use the `defineRule` helper instead of the raw type for better typing:
+
+```ts
+import { defineRule } from "viewlint/plugin";
+
+export default defineRule({
+	meta: {
+		severity: "warn",
+	},
+	async run(context) {
+		// ...
+	},
+});
+```
+
+## `meta`
+
+`meta` is optional, but recommended.
+
+Common fields:
+
+- `meta.severity`: The rule's default severity (`"error" | "warn" | "info"`).
+- `meta.docs.description`: A short description.
+- `meta.schema`: A Zod schema (or an array of schemas) for validating rule options.
+- `meta.defaultOptions`: Default options (Merged below user options).
+- `meta.hasSideEffects`: Set to `true` if the rule clicks, scrolls, or otherwise changes page state.
+
+## The rule context
+
+Your `run(context)` gets a small toolbox for inspecting the page, finding elements, and reporting violations:
+
+- `context.page`: A Playwright `Page`.
+- `context.url`: The current page URL.
+- `context.scope`: A scoped locator helper (`scope.locator("...")`).
+- `context.report(...)`: Report a violation from Node.
+- `context.evaluate(...)`: Run code in the browser with access to `scope` plus a browser-side `report`.
+
+## Understanding Node vs Browser Environment
+
+The way that Playwright works is that you can interact with a proxy of the browser in the Node (or just generally any external JS runtime environment, we'll call it "Node" for now), or you can interact directly with the Browser environment (think of it as your code running in the console of the browser).
+
+Because these environments are completely separate, passing data from one layer to the other can be quite difficult. Because of that, there are a few pieces of logic that ViewLint supplies on _both layers separately_ including the `report` function as you will see below.
+
+## Reporting violations
+
+### Browser-Side Reporting
+
+Browser-side reporting is usually the easiest because you can iterate real DOM elements:
+
+```ts
+import { defineRule } from "viewlint/plugin";
+
+export default defineRule({
+	async run(context) {
+		await context.evaluate(({ report, scope }) => {
+			for (const el of scope.queryAll("[data-test-id]")) {
+				if (!(el instanceof HTMLElement)) continue;
+				report({
+					message: "Avoid data-test-id in production UI.",
+					element: el,
+				});
+			}
+		});
+	},
+});
+```
+
+You can also attach related elements as an array as such, which represent other elements relevant in the output:
+
+```ts
+report({
+	message: "Button overlaps input",
+	element: button,
+	relations: [{ description: "Overlapped input", element: input }],
+});
+```
+
+### Node-side Reporting
+
+If you already have a Playwright locator, you can report from Node:
+
+```ts
+import { defineRule } from "viewlint/plugin";
+
+export default defineRule({
+	async run(context) {
+		const button = context.scope.locator("button");
+		context.report({
+			message: "Buttons should have visible labels.",
+			element: button,
+		});
+	},
+});
+```
+
+## Scope
+
+Scope is not magically implemented by ViewLint for a few reasons. This includes the fact that it is difficult to only pass "part of a page" into the rule. Thus, the rule itself has to impelement the scope.
+
+The scope is available for usage passed from both `run` and `context.evaluate`, in two different froms:
+
+### `run({ scope })`:
+
+This scope is defined in the Node environment, and you can access either `roots`, which is an array of the resolved locators from the input Scope, as well as a function `locator` which returns a locator based on a selector, similar to the [Playwright `page.locator()` method](https://playwright.dev/docs/api/class-page#page-locator).
+
+```ts
+import type { Locator } from "playwright";
+
+export type NodeScope = {
+	roots: Locator[]
+	locator(selector: string): Locator
+}
+```
+
+### `context.evaluate({ scope })`:
+
+This scope is defined in the Browser environment, and you can again access `roots`, but this time it is in Element form, since those are defined in the Browser context.
+
+You can also `query` and `queryAll` which function similar to the normal DOM equivalents, but they only return results in the Scope.
+
+```ts
+export type BrowserScope = {
+	roots: Element[]
+	queryAll(selector: string): Element[]
+	query(selector: string): Element | null
+}
+```
+
+## Rule options (Zod)
+
+If your rule accepts options, you can define a schema in your rule's `meta`.
+
+You'll first need to add `zod` to your plugin/package dependencies.
+
+ViewLint passes your options in as an array. That means the user config looks like `{"my-plugin/my-rule": ["warn", options]}` and your rule reads it as `context.options`.
+
+For a single options object:
+
+```ts
+import { z } from "zod";
+import { defineRule } from "viewlint/plugin";
+
+export default defineRule({
+	meta: {
+		schema: z.object({
+			max: z.number().int().min(0),
+		}),
+		defaultOptions: [{ max: 3 }],
+	},
+
+	async run(context) {
+		const [{ max }] = context.options;
+		void max;
+	},
+});
+```
+
+Then users configure it like this:
+
+```ts
+rules: {
+	"my-plugin/my-rule": ["warn", { max: 5 }],
+}
+```
+
+When you use `defineRule`, the type of the context.options is automatically inferred from Zod.
+
+## Side effects
+
+If your rule changes page state (clicks, types, scrolls, etc.), set:
+
+```ts
+meta: {
+	hasSideEffects: true;
+}
+```
+
+ViewLint will reset the page between rules when needed.

@@ -1,0 +1,199 @@
+---
+title: Getting Started
+description: Get started with ViewLint
+icon: Rocket
+---
+
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+ViewLint is a tool that helps identify issues in the rendered output of a website.
+
+## Quick Start
+
+Install and configure ViewLint with this command:
+
+```bash tab="NPM"
+npm init @viewlint/config@latest
+```
+
+```bash tab="PNPM"
+pnpm create @viewlint/config@latest
+```
+
+```bash tab="Bun"
+bun create @viewlint/config@latest
+```
+
+```bash tab="Yarn"
+yarn create @viewlint/config
+```
+
+This will guide you through the creation of a configuration file and help you install the necessary dependencies.
+
+## Run ViewLint
+
+After that, you can run ViewLint on any site like this:
+
+```bash tab="NPM"
+npx viewlint https://example.com
+```
+
+```bash tab="PNPM"
+pnpm dlx viewlint https://example.com
+```
+
+```bash tab="Bun"
+bunx viewlint https://example.com
+```
+
+```bash tab="Yarn"
+yarn dlx viewlint https://example.com
+```
+
+## Configuration
+
+When you run `npm init @viewlint/config` you'll be asked a series of questions to help you set up your ViewLint configuration.
+
+For example, if you select the base rules, your configuration file will look something like this:
+
+```ts
+import { defineConfig } from "viewlint/config";
+import rules from "@viewlint/rules";
+
+export default defineConfig({
+  plugins: {
+    rules,
+  },
+  extends: ["rules/recommended"],
+});
+```
+
+The `rules/recommended` configuration ensures that all the rules marked as recommended on the [rules reference page](/docs/rules-reference) will be enabled. You can configure rules individually by defining a new rules key, as in this example:
+
+```ts
+import { defineConfig } from "viewlint/config";
+import rules from "@viewlint/rules";
+
+export default defineConfig({
+  plugins: {
+    rules,
+  },
+  extends: ["rules/recommended"],
+  rules: {
+	"text-contrast": "error",
+  }
+});
+```
+
+The name `"text-contrast"` is the name of a rule in ViewLint.
+
+<Callout>
+**Difference from ESLint**: The severity system has been slightly tweaked:
+
+- Severity levels must be a string as defined below. Assigning to `0`, `1`, or `2` do not work.
+- Rules now bundle a **Default Severity**. In order to keep the **Default Severity**, you can use the `inherit` level in config.
+
+</Callout>
+
+The value you assign to it is the severity level of the rule. All rules have a severity level out-of-the-box, but you can configure it yourself.
+
+- `off`: Turn off the rule completely
+- `inherit`: Continue using the current severity
+- `info`: Mark the rule as informational only. Doesn't affect exit code.
+- `warn`: Make the rule a warning. Doesn't affect exit code
+- `error`: Make the rule an error. Affects exit code when it happens
+
+## Manual Installation
+
+You can also set up ViewLint manually.
+
+<Steps>
+<Step>
+### Install Packages
+
+Install ViewLint and the built-in rules:
+
+```bash tab="NPM"
+npm install --save-dev viewlint@latest @viewlint/rules@latest
+```
+
+```bash tab="PNPM"
+pnpm add --save-dev viewlint@latest @viewlint/rules@latest
+```
+
+```bash tab="Bun"
+bun add --dev viewlint@latest @viewlint/rules@latest
+```
+
+```bash tab="Yarn"
+yarn add --dev viewlint@latest @viewlint/rules@latest
+```
+
+</Step>
+<Step>
+### Add a ViewLint Config File
+
+ViewLint config files can be written in both JS and TS, depending on your project. In this guide, we will use TypeScript
+
+<Callout>
+**Difference from ESLint**: Built-in TypeScript
+
+ViewLint has TypeScript built in. That means that configuration files in TypeScript work out-of-the-box. All utility functions including `defineConfig` also are typed for a better DX.
+
+</Callout>
+
+```bash
+touch viewlint.config.ts
+```
+
+</Step>
+<Step>
+### Add a Configuration
+
+Add a configuration file to your `viewlint.config.ts`. Refer to [Configure Viewlint](/docs/configure-viewlint) for more information about how to add rules, custom configurations, plugins, and more.
+
+```ts
+import { defineConfig } from "viewlint/config";
+import rules from "@viewlint/rules";
+
+export default defineConfig({
+  plugins: {
+    rules,
+  },
+  extends: ["rules/recommended"],
+  rules: {
+	"text-contrast": "error",
+  }
+});
+```
+
+</Step>
+<Step>
+### Lint with ViewLint CLI
+
+```bash tab="NPM"
+npx viewlint https://example.com
+```
+
+```bash tab="PNPM"
+pnpm dlx viewlint https://example.com
+```
+
+```bash tab="Bun"
+bunx viewlint https://example.com
+```
+
+```bash tab="Yarn"
+yarn dlx viewlint https://example.com
+```
+
+See the [CLI Reference](/docs/cli-reference) for more information on CLI options.
+
+</Step>
+</Steps>
+
+## Next Steps
+
+- Learn how to [Configure ViewLint](/docs/configure-viewlint)
+- Learn how to author a [custom rule](/docs/rules-reference)
+- Get familiar with the [command line options](/docs/cli-reference)

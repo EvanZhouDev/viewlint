@@ -28,10 +28,6 @@ export default defineRule({
 					return domHelpers.hasClientSize(el)
 				}
 
-				const canScroll = (overflowValue: string): boolean => {
-					return overflowValue === "auto" || overflowValue === "scroll"
-				}
-
 				const checkElement = (el: HTMLElement): void => {
 					if (!domHelpers.isVisible(el)) return
 					if (!hasSize(el)) return
@@ -40,8 +36,8 @@ export default defineRule({
 					const overflowX = style.overflowX
 					const overflowY = style.overflowY
 
-					const canScrollX = canScroll(overflowX)
-					const canScrollY = canScroll(overflowY)
+					const canScrollX = domHelpers.canScroll(overflowX)
+					const canScrollY = domHelpers.canScroll(overflowY)
 
 					if (!canScrollX && !canScrollY) return
 

@@ -1,0 +1,54 @@
+{
+	"name": "@viewlint/create-config",
+	"version": "0.0.2",
+	"description": "Interactive initializer for ViewLint configuration",
+	"type": "module",
+	"bin": {
+		"create-config": "bin/create-config.js"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"files": [
+		"bin",
+		"dist",
+		"README.md"
+	],
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@clack/prompts": "^1.0.0"
+	},
+	"devDependencies": {
+		"@repo/typescript-config": "workspace:*",
+		"@types/node": "^22.15.3",
+		"bun-types": "^1.3.8",
+		"typescript": "5.9.2"
+	},
+	"scripts": {
+		"build": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && tsc -p tsconfig.json",
+		"check-types": "tsc -p tsconfig.check.json --noEmit",
+		"prepack": "npm run build",
+		"test": "bun test"
+	},
+	"author": "EvanZhouDev",
+	"license": "AGPL-3.0-only",
+	"bugs": {
+		"url": "https://github.com/EvanZhouDev/viewlint/issues"
+	},
+	"homepage": "https://viewlint.vercel.app/",
+	"keywords": [
+		"ui",
+		"lint",
+		"mcp",
+		"ai"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/EvanZhouDev/viewlint.git"
+	}
+}

@@ -23,6 +23,74 @@ export default defineRule({
 
 		await context.evaluate(
 			({ report, scope, args: { domHelpers } }) => {
+				const isLabelControlPair = (
+					label: HTMLElement,
+					candidate: Element | null,
+				): boolean => {
+					if (!(label instanceof HTMLLabelElement)) return false
+					if (!candidate) return false
+
+					const control = label.control
+					if (!control) return false
+
+					return control === candidate || control.contains(candidate)
+				}
+
+				const parseAlphaFromRgba = (value: string): number | null => {
+					const match = value
+						.trim()
+						.match(/^rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([0-9.]+)\s*\)$/i)
+					if (!match) return null
+					const parsed = Number.parseFloat(match[1] ?? "")
+					return Number.isFinite(parsed) ? parsed : null
+				}
+
+				const isEffectivelyInvisibleOverlay = (el: HTMLElement): boolean => {
+					if (!domHelpers.isVisible(el)) return true
+
+					const style = window.getComputedStyle(el)
+					const opacity = Number.parseFloat(style.opacity)
+					if (Number.isFinite(opacity) && opacity === 0) return true
+
+					const tag = el.tagName.toLowerCase()
+					const isFormControl =
+						tag === "input" ||
+						tag === "select" ||
+						tag === "textarea" ||
+						tag === "button"
+
+					if (isFormControl) return false
+
+					const bg = style.backgroundColor
+					const bgAlpha =
+						bg === "transparent" ? 0 : (parseAlphaFromRgba(bg) ?? 1)
+					const hasOpaqueBackground = bgAlpha > 0
+					const hasBackgroundImage = style.backgroundImage !== "none"
+					const hasShadow = style.boxShadow !== "none"
+					const hasOutline = Number.parseFloat(style.outlineWidth) > 0
+
+					const borderWidths = [
+						Number.parseFloat(style.borderTopWidth) || 0,
+						Number.parseFloat(style.borderRightWidth) || 0,
+						Number.parseFloat(style.borderBottomWidth) || 0,
+						Number.parseFloat(style.borderLeftWidth) || 0,
+					]
+					const hasBorder = borderWidths.some((w) => w > 0)
+
+					const hasVisibleFillOrStroke =
+						hasOpaqueBackground ||
+						hasBackgroundImage ||
+						hasBorder ||
+						hasShadow ||
+						hasOutline
+					if (hasVisibleFillOrStroke) return false
+
+					const hasText = el.innerText.trim().length > 0
+					if (hasText) return false
+
+					return true
+				}
+
 				const isInteractive = (el: Element): boolean => {
 					const tagName = el.tagName.toLowerCase()
 					const interactiveTags = [
@@ -136,6 +204,15 @@ export default defineRule({
 					if (!domHelpers.isVisible(el, { checkPointerEvents: true })) continue
 					if (isDisabled(el)) continue
 
+					const clippingAncestor =
+						domHelpers.findIntentionallyClippedAncestor(el)
+					if (
+						clippingAncestor &&
+						domHelpers.isElementClippedBy(el, clippingAncestor)
+					) {
+						continue
+					}
+
 					const rect = getRect(el)
 					if (!rect) continue
 					if (!isInViewport(rect)) continue
@@ -150,6 +227,16 @@ export default defineRule({
 					for (const point of samplePoints) {
 						const elementAtPoint = document.elementFromPoint(point.x, point.y)
 						totalChecked++
+
+						if (domHelpers.isHtmlElement(elementAtPoint)) {
+							if (isLabelControlPair(el, elementAtPoint)) {
+								continue
+							}
+
+							if (isEffectivelyInvisibleOverlay(elementAtPoint)) {
+								continue
+							}
+						}
 
 						if (!isElementOrDescendant(el, elementAtPoint)) {
 							obscuredCount++

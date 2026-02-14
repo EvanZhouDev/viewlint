@@ -74,7 +74,7 @@ function formatToolResults(
 // Initialize the MCP server
 export const mcpServer = new McpServer({
 	name: "ViewLint",
-	version: "0.0.0",
+	version: "0.0.1",
 })
 
 // Main linting tool

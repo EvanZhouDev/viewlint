@@ -3,11 +3,29 @@ title: Create Plugins
 description: Extends ViewLint with Custom Plugins
 ---
 
-Welcome to the docs! You can start writing documents in `/content/docs`.
+Plugins are how you can extend ViewLint. While there are pre-built plugins, including ViewLint's own `@viewlint/rules`, sometimes you want to build your own plugins.
 
-## What is Next?
+Most plugins provide two things:
+
+- New rules
+- Reusable configuration presets (Configs you can `extends`)
+
+If you want ViewLint to catch something specific to your product or design system, a plugin is usually the right tool.
+
+- Check that UI is following your design system
+- Check for interactions specific to your website
+
+If you are trying to solve a one-off problem, you can often start with a custom View or Scope instead. Plugins are best when you want a check you can reuse and share.
+
+## Next steps
 
 <Cards>
-  <Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
+  <Card
+    title="Custom Rules Quickstart"
+    href="/docs/create-plugins/custom-rules-quickstart"
+  />
+  <Card
+    title="Custom Rules Reference"
+    href="/docs/create-plugins/custom-rules-reference"
+  />
 </Cards>
