@@ -1,0 +1,18 @@
+---
+title: Unknown file extension ".ts"
+description: TypeScript Configuration with Node.js
+---
+
+If you get the `Unknown file extension ".ts"` error while setting up Playwright configuration using Node.js, that's because Node.js does not natively support TS files (yet).
+
+In order to fix this, you have a few choices:
+
+## Use a JS Config File
+
+ViewLint supports both JS and TS configuration files. If you wish to keep using Node.js, you can always switch to using a `viewlint.config.js` or `viewlint.config.mjs`.
+
+JS configuration files are also supported when initializing with `@viewlint/create-config`.
+
+## Switch to a Different Package Manager
+
+If you want to take full advantage of the power of ViewLint, which is written in TypeScript, you can choose to switch to a different package manager such as [Bun](https://bun.com/).

@@ -1,0 +1,75 @@
+---
+title: Authentication with Viewlint
+description: How do I authenticate with SSO or Oauth?
+---
+
+You may want to use ViewLint to lint a page gated behind authentication with SSO or Oauth.
+
+Thankfully, because ViewLint is powered under-the-hood by Playwright, authentication has already been handled. You just have to hook it up with ViewLint Views and Options.
+
+If you already know how to use Playwright Views and Options, you can just read the [Playwright docs for Authentication](https://playwright.dev/docs/auth) to hook it up. A brief guide is shown below.
+
+Use Playwright `storageState` to lint authenticated pages without logging in on every lint run.
+
+## 1. Capture an Auth State File
+
+Create a one-time script that logs in and saves session state:
+
+```js
+import fs from "node:fs/promises"
+import path from "node:path"
+import { chromium } from "playwright"
+
+const authFile = path.resolve("playwright/.auth/user.json")
+await fs.mkdir(path.dirname(authFile), { recursive: true })
+
+const browser = await chromium.launch()
+const context = await browser.newContext()
+const page = await context.newPage()
+
+await page.goto("https://app.example.com/login")
+await page.getByLabel("Email").fill(process.env.E2E_EMAIL ?? "")
+await page.getByLabel("Password").fill(process.env.E2E_PASSWORD ?? "")
+await page.getByRole("button", { name: "Sign in" }).click()
+await page.waitForURL("https://app.example.com/dashboard")
+
+await context.storageState({ path: authFile })
+await browser.close()
+```
+
+Run the script once to generate `playwright/.auth/user.json`, then keep the file out of version control because it may contain sensitive cookies or headers.
+
+Note that you can launch the script with a visible browser (not headless), manually login, then capture the `storageState` if you your login is more complicated (e.g. Oauth).
+
+## 2. Register an Authenticated Option in ViewLint
+
+```js
+import { defineConfig } from "viewlint/config"
+
+export default defineConfig([
+	{
+		options: {
+			authenticated: {
+				context: {
+					storageState: "playwright/.auth/user.json",
+				},
+			},
+		},
+	},
+])
+```
+
+## 3. Lint Using the Authenticated Option
+
+```bash
+viewlint https://app.example.com/dashboard --option authenticated
+```
+
+## 4. Refresh When Sessions Expire
+
+Re-run your auth setup script whenever sessions expire or credentials rotate.
+
+## References
+
+- [Playwright authentication guide](https://playwright.dev/docs/auth)
+- [Playwright BrowserContext `storageState`](https://playwright.dev/docs/api/class-browsercontext#browser-context-storage-state)
