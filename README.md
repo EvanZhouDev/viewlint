@@ -1,10 +1,11 @@
+<h1>
 <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./apps/docs/public/viewlint-logo.svg" />
-    <source media="(prefers-color-scheme: light)" srcset="./apps/docs/public/viewlint-logo-white.svg" />
-    <img src="./apps/docs/public/viewlint-logo.svg" alt="ViewLint Logo" width="180" />
+    <source media="(prefers-color-scheme: dark)" srcset="./apps/docs/public/viewlint-logo-white.svg" />
+    <source media="(prefers-color-scheme: light)" srcset="./apps/docs/public/viewlint-logo.svg" />
+    <img src="./apps/docs/public/viewlint-logo.svg" alt="ViewLint Logo" width="22" />
 </picture>
-
-# ViewLint
+ViewLint
+</h1>
 
 ViewLint helps identify UI issues by analyzing the rendered output a human sees, not just source code.
 
