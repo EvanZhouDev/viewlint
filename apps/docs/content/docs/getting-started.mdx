@@ -131,6 +131,17 @@ yarn add --dev viewlint@latest @viewlint/rules@latest
 
 </Step>
 <Step>
+### Install Playwright Browser
+
+ViewLint uses Playwright under the hood, and Playwright does not ship browser binaries in the package itself.
+If you do not have a Playwright browser available, install a browser instance before running ViewLint, with your preferred package manager:
+
+```bash
+npx playwright install chromium
+```
+
+</Step>
+<Step>
 ### Add a ViewLint Config File
 
 ViewLint config files can be written in both JS and TS, depending on your project. In this guide, we will use TypeScript
