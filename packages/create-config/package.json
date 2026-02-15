@@ -27,13 +27,14 @@
 		"@repo/typescript-config": "workspace:*",
 		"@types/node": "^22.15.3",
 		"bun-types": "^1.3.8",
-		"typescript": "5.9.2"
+		"typescript": "5.9.2",
+		"vitest": "3.2.4"
 	},
 	"scripts": {
 		"build": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && tsc -p tsconfig.json",
 		"check-types": "tsc -p tsconfig.check.json --noEmit",
 		"prepack": "npm run build",
-		"test": "bun test"
+		"test": "vitest run"
 	},
 	"author": "EvanZhouDev",
 	"license": "AGPL-3.0-only",
