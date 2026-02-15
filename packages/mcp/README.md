@@ -34,7 +34,7 @@ viewlint --mcp
     "viewlint": {
       "type": "stdio",
       "command": "npx",
-      "args": ["@viewlint/mcp@latest"]
+      "args": ["-y", "@viewlint/mcp@latest"]
     }
   }
 }
