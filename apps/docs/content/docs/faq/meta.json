@@ -1,0 +1,8 @@
+{
+	"title": "FAQ",
+	"pages": [
+		"authenticated-linting",
+		"browser-executable-doesnt-exist",
+		"unknown-file-ext-ts"
+	]
+}
