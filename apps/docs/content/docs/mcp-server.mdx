@@ -3,6 +3,8 @@ title: MCP Server Setup
 description: Help Agents write UI with ViewLint
 ---
 
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+
 The ViewLint MCP server lets an AI agent run ViewLint as a tool.
 
 It's useful when you want the agent to get fast feedback from the _rendered page_ while it's building UI. Instead of guessing, the agent can lint a URL and use the results to guide its next change.
@@ -14,7 +16,7 @@ If you are new to MCP, see [their website](https://modelcontextprotocol.io/docs/
 The `stdio` MCP server is published as `@viewlint/mcp`.
 
 ```bash
-npx @viewlint/mcp@latest
+npx -y @viewlint/mcp@latest
 ```
 
 You can also start it from the ViewLint CLI:
@@ -23,23 +25,120 @@ You can also start it from the ViewLint CLI:
 viewlint --mcp
 ```
 
-## Configure your editor
+## Install ViewLint in Your MCP Client
 
-Most MCP-capable editors accept a `command` + `args` configuration.
+All of these use the same local stdio server command:
 
-Example for VS Code (`.vscode/mcp.json`):
-
-```json
-{
-  "servers": {
-    "viewlint": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["@viewlint/mcp@latest"]
-    }
-  }
-}
+```bash
+npx -y @viewlint/mcp@latest
 ```
+
+Pick where you are installing it for detailed instructions:
+
+<Accordions type="single">
+  <Accordion title="Claude Code">
+    Use the Claude Code CLI:
+
+    ```bash
+    claude mcp add viewlint -- npx -y @viewlint/mcp@latest
+    claude mcp list
+    ```
+
+    For project-scoped setup, add `--scope project` (which writes to `.mcp.json`).
+
+    Official docs: [Claude Code MCP](https://docs.anthropic.com/en/docs/claude-code/mcp)
+  </Accordion>
+
+  <Accordion title="Codex">
+    Add the server with Codex CLI:
+
+    ```bash
+    codex mcp add viewlint -- npx -y @viewlint/mcp@latest
+    codex mcp list
+    ```
+
+    Or configure it directly in `~/.codex/config.toml`:
+
+    ```toml
+    [mcp_servers.viewlint]
+    command = "npx"
+    args = ["-y", "@viewlint/mcp@latest"]
+    ```
+
+    Official docs: [OpenAI MCP guide (Codex section)](https://platform.openai.com/docs/mcp)
+  </Accordion>
+
+  <Accordion title="Cursor">
+    Add ViewLint in either a project config (`.cursor/mcp.json`) or a global config (`~/.cursor/mcp.json`):
+
+    ```json
+    {
+      "mcpServers": {
+        "viewlint": {
+          "command": "npx",
+          "args": ["-y", "@viewlint/mcp@latest"]
+        }
+      }
+    }
+    ```
+
+    Official docs: [Cursor MCP](https://cursor.com/docs/context/mcp)
+  </Accordion>
+
+  <Accordion title="GitHub Copilot">
+    In VS Code, run `MCP: Add Server` (Command Palette) or edit `.vscode/mcp.json`:
+
+    ```json
+    {
+      "servers": {
+        "viewlint": {
+          "command": "npx",
+          "args": ["-y", "@viewlint/mcp@latest"]
+        }
+      }
+    }
+    ```
+
+    GitHub Copilot also supports MCP server setup in Visual Studio, JetBrains IDEs, Eclipse, and Xcode through their MCP settings flow.
+
+    Official docs: [Use MCP in Copilot coding agent](https://docs.github.com/en/copilot/how-tos/provide-context/use-mcp/use-the-github-mcp-server) and [Use MCP in VS Code](https://code.visualstudio.com/docs/copilot/chat/mcp-servers)
+  </Accordion>
+
+  <Accordion title="OpenCode">
+    Configure MCP servers in project `opencode.json` / `opencode.jsonc` (or globally in `~/.config/opencode/opencode.json`):
+
+    ```json
+    {
+      "$schema": "https://opencode.ai/config.json",
+      "mcp": {
+        "viewlint": {
+          "type": "local",
+          "command": ["npx", "-y", "@viewlint/mcp@latest"]
+        }
+      }
+    }
+    ```
+
+    Official docs: [OpenCode MCP](https://opencode.ai/docs/mcp)
+  </Accordion>
+
+  <Accordion title="Windsurf">
+    Edit Windsurf's MCP config file at `~/.codeium/windsurf/mcp_config.json`:
+
+    ```json
+    {
+      "mcpServers": {
+        "viewlint": {
+          "command": "npx",
+          "args": ["-y", "@viewlint/mcp@latest"]
+        }
+      }
+    }
+    ```
+
+    Official docs: [Windsurf MCP](https://docs.windsurf.com/windsurf/cascade/mcp)
+  </Accordion>
+</Accordions>
 
 ## Tools
 

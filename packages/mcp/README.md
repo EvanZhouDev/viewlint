@@ -1,6 +1,10 @@
 # @viewlint/mcp
 
-MCP server for ViewLint. You can use ViewLint with any AI Agent to improve its UI design skills.
+[GitHub](https://github.com/EvanZhouDev/viewlint) | [Documentation](https://viewlint.vercel.app/docs)
+
+`@viewlint/mcp` is the Model Context Protocol (MCP) server for ViewLint.
+
+It lets MCP-capable editors and agents run ViewLint as tools, so they can get feedback from rendered UI while making changes.
 
 ## Usage
 
@@ -16,4 +20,24 @@ viewlint --mcp
 
 ## What it does
 
-See the [docs](https://viewlint.vercel.app/docs/mcp-server)
+- Runs a stdio MCP server
+- Discovers the active `viewlint.config.*` file from the current working directory
+- Exposes a `get-config` tool to inspect configuration discovery
+- Exposes a `lint` tool to run ViewLint with optional `view`, `options`, `scopes`, and `selectors`
+- Returns structured lint results suitable for agent workflows
+
+## Example MCP client config
+
+```json
+{
+  "servers": {
+    "viewlint": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@viewlint/mcp@latest"]
+    }
+  }
+}
+```
+
+See the [MCP Server docs](https://viewlint.vercel.app/docs/mcp-server) in the ViewLint Documentation for full setup details.

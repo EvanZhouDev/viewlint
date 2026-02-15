@@ -6,35 +6,31 @@ icon: BookMarked
 
 ## What is ViewLint?
 
-ViewLint helps identify issues with your UI, by analyzing the rendered output a human sees, instead of code.
+ViewLint helps identify UI issues by analyzing the rendered output a human sees, not just source code.
 
-Built from the start [for coding agents](#built-for-llms), ViewLint accelerates workflows from development to shipping. It's designed to be ready out-of-the-box as well as extensible, making it perfect for individual developers to enterprise organizations.
+Built for modern coding workflows and [AI Agents](#built-for-llms), ViewLint accelerates workflows from development to shipping. It's designed to be ready to use out-of-the-box and extensible when you need it, making it perfect for individual developers to enterprise organizations.
 
 ![A user interface with problematic elements boxed, annotated with the various issues in those elements including text contrast, space misuse, container overflow, and incoherent corner radius.](/viewlint-visualized.png)
 
 ## The UI Linting Problem
 
-In the world of UI, identifying issues with code can only get you so far. Many issues are incredibly difficult if not impossible to catch just by looking at code alone:
+UI issues such as clipped content, overflow, low contrast, and obscured hit targets are often hard to catch from source code alone.
 
-- Contents overflowing containers
-- Poor text contrast
-- Obscured hit targets
-
-So instead, ViewLint validates your UI the same way a human does, looking at the actual rendered browser output to identify any potential issues.
+Instead, ViewLint validates your UI the same way a human does, looking at and interacting with the actual rendered browser output to catch potential issues.
 
 ### UI's Broken Feedback Loop
 
-![](/broken-feedback-loop.png)
-
 LLMs are fantastic at writing code. They're not so great at making UI.
 
-As it turns out, it's because coding agents have a closed feedback loop to validate their code and logic. However, when designing UIs, the agent can only inspect the DOM tree manually or take screenshots, both of which give it weak feedback that doesn't create a strong feedback loop to help it improve its output.
+As it turns out, that's because Coding Agents have a closed feedback loop to validate their code and logic. But when it comes to UI, inspecting the DOM tree manually and taking screenshots just aren't concrete and actionable enough to close that feedback loop.
 
-### ViewLint Closes the Loop
+![](/broken-feedback-loop.png)
+
+ViewLint closes the feedback loop with UI design, allowing the agent to get live, actionable feedback on the rendered output of the website it's working on.
 
 ![](/closed-feedback-loop-small.png)
 
-With ViewLint, we close the feedback loop with UI design, and allow the agent to get live feedback on the rendered output of the website it is working on. This significantly improves their UI design performance. Compare the same UI created with and without ViewLint by dragging the slider below.
+ViewLint significantly improves the UI design performance of AI Agents. Compare the same UI created with and without ViewLint by dragging the slider below.
 
 <ImageComparison
   beforeSrc="/ui-without-viewlint.png"
