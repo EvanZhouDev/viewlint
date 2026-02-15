@@ -1,25 +1,33 @@
 # @viewlint/create-config
 
-Interactive initializer for ViewLint configuration.
+[GitHub](https://github.com/EvanZhouDev/viewlint) | [Documentation](https://viewlint.vercel.app/docs)
+
+`@viewlint/create-config` is the interactive initializer for ViewLint configuration files.
 
 ## Usage
 
 ```bash
-npx @viewlint/create-config
+npx @viewlint/create-config@latest
 ```
 
 Or:
 
 ```bash
-npm init @viewlint/config
+npm init @viewlint/config@latest
 ```
 
 ## What it does
 
-- Asks which preset to use (`@viewlint/rules` recommended vs all)
-- Asks whether to generate a TypeScript or JavaScript config
+- Asks which preset to use (`rules/recommended` or `rules/all`)
+- Asks whether to generate TypeScript or JavaScript config
 - Writes a `viewlint.config.ts` or `viewlint.config.mjs` file
-- Optionally installs required dependencies as dev dependencies
-- If you choose to install dependencies and no `package.json` exists, it can create a minimal one
+- Optionally installs `viewlint` and `@viewlint/rules`
+- If no `package.json` exists, can create one before installing dependencies
 
-For more info, see the [docs](https://viewlint.vercel.app/docs/getting-started)
+## When to use it
+
+- First-time ViewLint setup
+- Fast project bootstrap in a repo that does not yet have `viewlint.config.*`
+- Standardizing setup across multiple projects
+
+For more info, see [Getting Started](https://viewlint.vercel.app/docs/getting-started) in the ViewLint Documentation.
