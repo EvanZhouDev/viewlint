@@ -1,7 +1,7 @@
 <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./apps/docs/public/viewlint-logo.svg" />
-    <source media="(prefers-color-scheme: light)" srcset="./apps/docs/public/viewlint-logo-white.svg" />
-    <img src="./apps/docs/public/viewlint-logo.svg" alt="ViewLint Logo" width="180" />
+    <source media="(prefers-color-scheme: dark)" srcset="./apps/docs/public/viewlint-logo-white.svg" />
+    <source media="(prefers-color-scheme: light)" srcset="./apps/docs/public/viewlint-logo.svg" />
+    <img src="./apps/docs/public/viewlint-logo.svg" alt="ViewLint Logo" width="30" />
 </picture>
 
 # ViewLint
