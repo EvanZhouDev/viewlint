@@ -32,7 +32,7 @@ For setup details and advanced configuration, see the [Getting Started guide](ht
 
 UI issues such as clipped content, overflow, low contrast, and obscured hit targets are often hard to catch from source code alone.
 
-Instead, ViewLint validates your UI the same way a human does, looking at and interacting with the actual rendered browser output.
+Instead, ViewLint validates your UI the same way a human does, looking at and interacting with the actual rendered browser output to catch potential issues.
 
 ### UI's Broken Feedback Loop
 
@@ -46,7 +46,7 @@ ViewLint closes the feedback loop with UI design, allowing the agent to get live
 
 ![Broken feedback loop](./apps/docs/public/closed-feedback-loop-small.png)
 
-Learn more and see the difference at the [ViewLint documentation](https://viewlint.vercel.app/#viewlint-closes-the-loop).
+ViewLint significantly improves the UI design performance of AI Agents. Learn more and see the difference at the [ViewLint documentation](https://viewlint.vercel.app/#viewlint-closes-the-loop).
 
 ## Documentation
 
