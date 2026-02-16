@@ -1,6 +1,6 @@
 {
 	"name": "viewlint",
-	"version": "0.0.2",
+	"version": "1.0.0",
 	"description": "Find UI issues on live websites.",
 	"type": "module",
 	"exports": {
