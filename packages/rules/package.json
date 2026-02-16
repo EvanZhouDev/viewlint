@@ -1,6 +1,6 @@
 {
 	"name": "@viewlint/rules",
-	"version": "0.0.2",
+	"version": "1.0.0",
 	"description": "Built-in web rule set for ViewLint",
 	"type": "module",
 	"exports": {

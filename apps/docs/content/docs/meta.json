@@ -8,6 +8,7 @@
 		"cli-reference",
 		"mcp-server",
 		"rules-reference",
+		"faq",
 		"---Extending ViewLint---",
 		"ways-to-extend-viewlint",
 		"create-plugins",

@@ -1,6 +1,6 @@
 {
 	"name": "@viewlint/mcp",
-	"version": "0.0.2",
+	"version": "1.0.0",
 	"description": "MCP server for ViewLint",
 	"type": "module",
 	"bin": {

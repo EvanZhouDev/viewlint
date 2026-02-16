@@ -1,0 +1,14 @@
+---
+title: Missing Browser Executable
+description: Why does ViewLint fail with browserType.launch Executable doesn't exist?
+---
+
+ViewLint requires a Playwright Chromium browser to be installed before it can run.
+
+You can install the browser as such, or with your preferred package manager:
+
+```bash
+npx playwright install chromium
+```
+
+Note that if you use `npm init @viewlint/config`, it will ask you whether you wish to install the browser.
