@@ -1,6 +1,6 @@
 {
 	"name": "@viewlint/create-config",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "Interactive initializer for ViewLint configuration",
 	"type": "module",
 	"bin": {
