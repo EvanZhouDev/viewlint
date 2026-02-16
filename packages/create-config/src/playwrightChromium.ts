@@ -105,7 +105,9 @@ function getPlaywrightChromium(
 	const chromiumValue = playwright.chromium ?? moduleValue.chromium
 	if (!hasExecutablePath(chromiumValue)) return null
 
-	return { executablePath: chromiumValue.executablePath }
+	// Preserve Playwright's chromium object as-is so `executablePath()` keeps
+	// its original `this` binding.
+	return chromiumValue
 }
 
 export async function isPlaywrightChromiumInstalled(opts: {

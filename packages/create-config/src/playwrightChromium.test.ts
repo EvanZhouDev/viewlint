@@ -80,6 +80,26 @@ describe("isPlaywrightChromiumInstalled", () => {
 
 		expect(installed).toBe(true)
 	})
+
+	it("preserves executablePath method binding", async () => {
+		const installed = await isPlaywrightChromiumInstalled({
+			cwd: "/tmp",
+			runtime: {
+				resolvePlaywright: () => "/tmp/playwright/index.js",
+				importModule: async () => ({
+					chromium: {
+						executable: "/tmp/chrome",
+						executablePath() {
+							return this.executable
+						},
+					},
+				}),
+				access: async () => {},
+			},
+		})
+
+		expect(installed).toBe(true)
+	})
 })
 
 describe("installPlaywrightChromium", () => {
