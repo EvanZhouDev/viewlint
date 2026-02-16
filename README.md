@@ -7,6 +7,8 @@
 ViewLint
 </h1>
 
+[Documentation](https://viewlint.vercel.app/) | [NPM](https://www.npmjs.com/package/viewlint)
+
 ViewLint helps identify UI issues by analyzing the rendered output a human sees, not just source code.
 
 Built for modern coding workflows and AI Agents, ViewLint accelerates workflows from development to shipping. It's designed to be ready to use out-of-the-box and extensible when you need it, making it perfect for individual developers to enterprise organizations.
